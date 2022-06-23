@@ -1,8 +1,8 @@
 # PXE Boot ShredOS
 
-This document will walk through the process I used to wipe 50 Intel NUC's by setting up a PXE server to network boot ShredOS. I will cover the different methods and tools I tried for setting up a PXE server, including Windows ADK and SLAX, as well as how I eventually successfully configured a PXE server in [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/). The last section will cover troubleshooting and workarounds I needed to use in some cases.
+This document will walk through the processes I used to wipe 50 Intel NUC's by setting up a PXE server to network boot ShredOS. I will cover the server setup in both [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/) and [SLAX](https://www.slax.org/). You can also find troubleshooting and workaround that might be useful. Finally, the last section contains information about the equipment I used as well as other notes.
 
-The sections "Ubuntu Server" and "SLAX Linux" each describe the working servers in each of those operating systems.
+while I setup the SLAX and Ubuntu servers in slightly different ways, either way should work on either operating system as the packages used are system-independent.
 
 #### Contents:
 - [Ubuntu Server 20.04.4](#ubuntu-server-20044)
@@ -13,7 +13,41 @@ The sections "Ubuntu Server" and "SLAX Linux" each describe the working servers 
 ---
 
 ## Ubuntu Server 20.04.4
-Around this time, Matthew also gave me a USB installer for [Ubuntu Server 20.04.4](https://releases.ubuntu.com/20.04/). While I first tried to setup a new PXE server in SLAX, I realized that I would be able to find much more Ubuntu-specific information and tutorials, so I installed Ubuntu on a NUC and switched over.
+While any Linux operating system should be able to follow the steps below to setup a server, Ubuntu is a good choice for this project since it is very well documented and supported. I began working from a fresh install of [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/) on an [Intel NUC](#equipment-and-other-notes).
+
+### Setup
+To begin, install the necessary packages:
+```
+sudo apt-get -y update && sudo apt-get -y upgrade
+sudo apt-get -y install isc-dhcp-server tftpd-hpa
+```
+``isc-dhcp-server`` will act as the DHCP server, and ``tftpd-hpa`` will be the TFTP server.
+
+### DHCP
+In order to configure the DCHP server, you will need to know the name of the interface you are using. You can find this using:
+```
+ip a
+```
+In my case, I see:
+```
+1: lo: ...
+...
+2: eno1: <ND-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc fq_code1 state 
+```
+
+the NUC's only have one ethernet port, which I have plugged into the network switch, so 
+
+The config file for ``isc-dhcp-server`` can be found in ``/etc/default/isc-dhcpd-server``. It should start looking like this:
+```
+...
+# On what interfaces should the DHCP server (dhcpd) serve DHCP requests?
+#      Separate multiple interfaces with spaces, e.g. "eth0 eth1".
+INTERFACESv4=""
+INTERFACESv6=""
+```
+
+### References
+- (Youtube) [Setting up an UEFI PXE server on Linux (Part 1)](https://youtu.be/U3RC20ANomk)
 
 ---
 
