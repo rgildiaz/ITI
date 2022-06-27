@@ -276,6 +276,23 @@ ShredOS installed and booted with no issues from the USB, and since it took abou
 
 For reference, both the USB and the netboot image came from the same place: [Privex's ShredOS fork](https://githubmemory.com/repo/Privex/shredos). Specifically this [Bootable ShredOS ISO](https://files.privex.io/images/iso/shredos/v1.1/shredos.iso) and this [ShredOS Preconfigured PXE boot environment using PXELinux](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz).
 
+### Troubleshooting TFTP Server
+You may want to make sure your TFTP server is working. I did so on my Windows laptop with the following steps:
+1. Download the TFTP Client feature
+    1. Open the Control Panel
+    2. Navigate to Programs > Programs and Features > Turn Windows features on or off
+    3. Check the box next to "TFTP Client", and click OK
+2. Plug the computer into a network switch the server is connected to. Use the Command Prompt to transfer a file:
+    1. Open the Command Prompt
+    2. Transfer ``menu.c32`` (or any other small file):
+```
+tftp 192.168.0.105 GET "menu.c32"
+```
+3. You should see something like the following:
+```
+Transfer successful: 27672 bytes in 1 second(s), 27672 bytes/s
+```
+
 ---
 
 ## Running this server in the future
