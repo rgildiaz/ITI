@@ -27,7 +27,7 @@ Also, it is nice to have a static IP address for the DHCP server. To do so, navi
 ```
 sudo nano /etc/netplan/01-netcfg.yaml
 ```
-```
+```yaml
 network:
   version: 2
   renderer: networkd
@@ -65,7 +65,7 @@ Edit the ``default`` file with the location of the kernel and any appropriate ke
 If you are using ShredOS, [download the preconfigured PXELINUX environment](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz) and extract the files into the ``/tftpboot`` directory.
 
 Edit ``pxelinux.cfg/default`` to read the following:
-```
+```yaml
 UI menu.c32
 
 DEFAULT shredos
@@ -82,7 +82,7 @@ TIMEOUT 10
 ```
 
 Now that all the tftp files are in place, configure the server by editing ``/etc/default/tftpd-hpa``:
-```
+```yaml
 TFTP_USERNAME="tftp"
 TFTP-DIRECTORY="/tftpboot"
 TFTP_ADDRESS="192.168.0.105:69"
@@ -110,7 +110,7 @@ In my case, I see:
 The NUC's only have one ethernet port, which I have plugged into the network switch, so ``eno1`` is the name of the ethernet port that will be used for this.
 
 The defaults file for ``isc-dhcp-server`` can be found in ``/etc/default/isc-dhcpd-server``. It should start looking like this:
-```
+```yaml
 ...
 # On what interfaces should the DHCP server (dhcpd) serve DHCP requests?
 #      Separate multiple interfaces with spaces, e.g. "eth0 eth1".
@@ -119,12 +119,12 @@ INTERFACESv6=""
 ```
 
 Edit the ``INTERFACESv4`` with the name of your interface:
-```
+```yaml
 INTERFACESv4="eno1"
 ```
 
 The config file can be found in ``/etc/dhcp/dhcpd.conf``. Edit it to contain this, replacing the addresses as necessary:
-```
+```yaml
 subnet 192.168.0.0 netmask 255.255.255.0 {
   range 192.168.0.106 192.168.0.200;
   option routers 192.168.0.1;
@@ -170,7 +170,7 @@ sudo apt-get -y install dnsmasq tftpd-hpa pxelinux syslinux
 ``dnsmasq`` will act as the DHCP server, and ``tftpd-hpa`` will be the TFTP server. ``pxelinux`` and ``syslinux`` provide the necessary files and functionality for PXE booting.
 
 Set a static IP by editing ``/etc/network/interfaces``:
-```
+```yaml
 auto eno1
 iface eno1 inet static
 address 192.168.0.105
@@ -185,7 +185,7 @@ To configure ``dnsmasq``, edit the config file found in:
 ```
 sudo nano /etc/dnsmasq.conf
 ```
-```
+```yaml
 dhcp-range=192.168.0.106,192.168.0.200,6h
 dhcp-boot=pxelinux.0,192.168.0.105
 interface=eno1
@@ -254,11 +254,11 @@ The NUC's that do experience this issue look like they were all used for a singl
 I found this forum post about a [similar issue with DBAN](https://sourceforge.net/p/dban/discussion/208932/thread/6bc10266/). I followed the steps some users posted about:
 
 1. **Disable secure boot**. First I tried disabling secure boot and UEFI in the NUC's BIOS. To do so, I:
-  - powered on the NUC,
-  - tapped F2 to open the VisualBIOS,
-  - navigated to "Advanced" and then to the "Boot" tab,
-  - navigated to the "Secure Boot" tab within the Boot menu and ensured the "Secure Boot" option was unchecked.
-  - Then, I navigated from the "Secure Boot" tab to "Boot Priority", and I unchecked the "UEFI Boot" option under the "UEFI Boot Priority" column.
+    - powered on the NUC,
+    - tapped F2 to open the VisualBIOS,
+    - navigated to "Advanced" and then to the "Boot" tab,
+    - navigated to the "Secure Boot" tab within the Boot menu and ensured the "Secure Boot" option was unchecked.
+    - Then, I navigated from the "Secure Boot" tab to "Boot Priority", and I unchecked the "UEFI Boot" option under the "UEFI Boot Priority" column.
 
 &emsp;&emsp;&emsp;After following these steps, I was still unable to boot to ShredOS, as the same error still occurred.
 
@@ -282,13 +282,14 @@ You may want to make sure your TFTP server is working. I did so on my Windows la
     1. Open the Control Panel
     2. Navigate to Programs > Programs and Features > Turn Windows features on or off
     3. Check the box next to "TFTP Client", and click OK
-2. Plug the computer into a network switch the server is connected to. Use the Command Prompt to transfer a file:
+2. Plug the computer into a network switch the server is connected to.
+3. Use the Command Prompt to transfer a file:
     1. Open the Command Prompt
     2. Transfer ``menu.c32`` (or any other small file):
 ```
 tftp 192.168.0.105 GET "menu.c32"
 ```
-3. You should see something like the following:
+4. You should see something like the following confirming a file transfer:
 ```
 Transfer successful: 27672 bytes in 1 second(s), 27672 bytes/s
 ```
@@ -366,7 +367,6 @@ Here are links that may be helpful if attempting a different implementation of a
 - [netboot.xyz](https://netboot.xyz/docs/faq/)
   - A removable-media-bootable utility that uses iPXE to allow for PXE booting of multiple operating systems.
 - [ShredOS](https://github.com/PartialVolume/shredos.x86_64)
-  - A Linux operating system and descendant of [DBAN
-  ](https://dban.org/) designed for the sole purpose of securely erasing the entire contents of a disk using [nwipe](https://github.com/martijnvanbrummelen/nwipe).
+  - A Linux operating system and descendant of [DBAN](https://dban.org/) designed for the sole purpose of securely erasing the entire contents of a disk using [nwipe](https://github.com/martijnvanbrummelen/nwipe).
 - [Privex ShredOS Fork](https://githubmemory.com/repo/Privex/shredos#kernel-boot-flags)
   - This is a fork of ShredOS which is managed by [Privex](https://www.privex.io/). This fork contains some pre-built ShredOS images, including a USB-bootable version as well as a PXE boot environment using [PXELINUX](https://wiki.syslinux.org/wiki/index.php?title=PXELINUX)
