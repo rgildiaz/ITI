@@ -294,6 +294,18 @@ tftp 192.168.0.105 GET "menu.c32"
 Transfer successful: 27672 bytes in 1 second(s), 27672 bytes/s
 ```
 
+### Troubleshooting DHCP Server
+You may also want to test your DHCP server. One easy way to do this on Windows follows:
+1. Open the Command Prompt
+2. Type:
+```
+ipconfig /all | find /i “DHCP Server”
+```
+3. You should see the IP address of the server you setup. In my case it shows:
+```
+   DHCP Server . . . . . . . . . . . : 192.168.0.105
+```
+
 ---
 
 ## Running this server in the future
