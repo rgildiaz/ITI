@@ -48,14 +48,23 @@ The TFTP server will copy the bootloader and kernel to the client computer. To s
 sudo mkdir /tftpboot
 ```
 
-If you are using a different operating system than ShredOS, populate the ``/tftpboot`` directory with the files from the ``syslinux`` directory using the following:
+If you are planning to boot a different operating system than ShredOS, populate the ``/tftpboot`` directory with the files from the ``syslinux`` directory using the following:
 ```
 sudo cp /usr/lib/PXELINUX/pxelinux.0 /tftpboot
 sudo cp /usr/lib/syslinux/modules/efi64/{libutil.c32,vesamenu.c32,menu.c32,libcom32.c32} /tftpboot
 sudo cp /usr/lib/syslinux/modules/bios/ldlinux.c32 /tftpboot
 ```
 
-Download your kernel and put it in the /tftpboot directory. Then, create a place to store the PXELINUX config file:
+Download your kernel and put it in the /tftpboot directory. It may be helpful to create a nested directory for this. For example, ShredOS is organized:
+```yaml
+/tftpboot/
+  shredos/
+    shredos # this is the kernel
+  pxelinux.0
+  ...
+```
+
+Then, create a place to store the PXELINUX config file:
 ```
 sudo mkdir /tftpboot/pxelinux.cfg
 sudo touch /tftpboot/pxelinux.cfg/default
@@ -66,20 +75,27 @@ If you are using ShredOS, [download the preconfigured PXELINUX environment](http
 
 Edit ``pxelinux.cfg/default`` to read the following:
 ```yaml
+#SERIAL 0 9600 0X008
+
+# search path for the c32 support libraries (libcom32, libutil etc.)
+path sys/
+
 UI menu.c32
 
 DEFAULT shredos
 
-# label in boot menu
-LABEL ShredOS
-  # relative location of kernel
+LABEL shredos
   KERNEL shredos/shredos
-  # any kernel options
+  #APPEND console=ttyS0,9600n8 simple quiet loglevel=0 console_baud=0
+  # Fully automatic formatting of ALL DISKS
   APPEND console=tty0 autonuke method=zero rounds=1 nwipe_verify=last loglevel=0 console_baud=0
 
-# tenths of a second to wait before autobooting
 TIMEOUT 10
 ```
+
+That is, comment out the ``SERIAL`` line and the first ``APPEND`` line. Then, uncomment the second ``APPEND`` line and remove ``simple`` from the kernel options. Finally, change ``console=console=ttyS0,9600n8`` to ``console=tty0``. 
+
+> I found that the preconfigured environment is sometimes finicky. Check [the troubleshooting section](#troubleshooting-shredos-preconfigured-environment) for tips if you run into issues.
 
 Now that all the tftp files are in place, configure the server by editing ``/etc/default/tftpd-hpa``:
 ```yaml
@@ -295,7 +311,7 @@ Transfer successful: 27672 bytes in 1 second(s), 27672 bytes/s
 ```
 
 ### Troubleshooting DHCP Server
-You may also want to test your DHCP server. One easy way to do this on Windows follows:
+You may also want to test your DHCP server. If you are connected to the DHCP server's network on a Windows computer, follow the steps below:
 1. Open the Command Prompt
 2. Type:
 ```
@@ -304,6 +320,44 @@ ipconfig /all | find /i “DHCP Server”
 3. You should see the IP address of the server you setup. In my case it shows:
 ```
    DHCP Server . . . . . . . . . . . : 192.168.0.105
+```
+
+### Troubleshooting ShredOS Preconfigured Environment
+The [preconfigured ShredOS PXELINUX environment](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz) directs the system to look in the ``tftpboot/sys/`` directory for the necessary booting files. However, sometimes this doesn't work. If the default setup for the environment isn't booting, try editing the ``/tftpboot/pxelinux.cfg/default`` file to read:
+
+```yaml
+# where to look for the GUI
+UI menu.c32
+
+DEFAULT shredos
+
+# label in boot menu
+LABEL ShredOS
+  # relative location of kernel
+  KERNEL shredos/shredos
+  # append any kernel options
+  APPEND console=tty0 autonuke method=zero rounds=1 nwipe_verify=last loglevel=0 console_baud=0
+
+# tenths of a second to wait before autobooting
+TIMEOUT 10
+```
+
+That is, remove the ``path sys/`` that was at the top of the file. Now, follow these steps to move the necessary files directly into the ``/tftpboot`` directory:
+```
+sudo cp /usr/lib/PXELINUX/pxelinux.0 /tftpboot
+sudo cp /usr/lib/syslinux/modules/efi64/{libutil.c32,vesamenu.c32,menu.c32,libcom32.c32} /tftpboot
+sudo cp /usr/lib/syslinux/modules/bios/ldlinux.c32 /tftpboot
+```
+
+At this point, the ``/tftpboot/sys/`` directory isn't used at all, so you could delete it. This step isn't necessary:
+```
+sudo rm -rf /tftpboot/sys/
+```
+
+Now try restarting the ``tftpd-hpa`` service and try again:
+```
+sudo systemctl restart tftpd-hpa.service
+sudo systemctl status tftpd-hpa.service
 ```
 
 ---
