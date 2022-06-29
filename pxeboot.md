@@ -2,7 +2,7 @@
 
 This document will walk through the processes I used to set up a PXE server to network boot ShredOS. I will cover the server setup in both [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/) and [SLAX](https://www.slax.org/). I have included a section with troubleshooting steps and workarounds that might be useful, and the last section contains information about the equipment I used as well as other notes.
 
-While I setup the SLAX and Ubuntu servers in slightly different ways, either method should work on either operating system as the packages used are system-independent.
+While I setup the SLAX and Ubuntu servers in slightly different ways, either method should work on either operating system as the packages used are system-independent. Both servers use ``tftpd-hpa`` as the TFTP server. The Ubuntu instructions use ``isc-dhcp-server`` for a DCHP server, and the SLAX instructions instead use ``dnsmasq``.
 
 #### Contents:
 - [Ubuntu Server 20.04.4](#ubuntu-server-20044)
@@ -13,7 +13,7 @@ While I setup the SLAX and Ubuntu servers in slightly different ways, either met
 ---
 
 ## Ubuntu Server 20.04.4
-While any Linux operating system should be able to follow the steps below to setup a server, Ubuntu is a good choice for this project since it is very well documented and supported. I began working from a fresh install of [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/) on an [Intel NUC](#equipment-and-other-notes).
+While the steps below should work for any Linux distribution, Ubuntu is a good choice for this project since it is very well documented and supported. I began working from a fresh install of [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/) on an [Intel NUC](#equipment).
 
 ### Setup
 To begin, install the necessary packages:
@@ -23,7 +23,7 @@ sudo apt-get -y install isc-dhcp-server tftpd-hpa pxelinux syslinux
 ```
 ``isc-dhcp-server`` will act as the DHCP server, and ``tftpd-hpa`` will be the TFTP server. ``pxelinux`` and ``syslinux`` provide the necessary files and functionality for PXE booting.
 
-Also, it is nice to have a static IP address for the DHCP server. To do so, navigate to your ``/netplan/`` to change it:
+Set a static IP address for the DHCP server through the ``/netplan/``:
 ```
 sudo nano /etc/netplan/01-netcfg.yaml
 ```
@@ -53,12 +53,18 @@ In my case, I see:
 
 The [NUC](#equipment)'s only have one ethernet port, which I have plugged into the network switch, so ``eno1`` is the name of the ethernet port that will be used for this.
 
+Make sure to apply these network changes with:
+```
+sudo netplan apply
+```
+
 ### TFTP
 The TFTP server will copy the bootloader and kernel to the client computer. To start, create a place to store the files which will be transferred:
 ```
 sudo mkdir /tftpboot
 ```
 
+#### PXE boot any Linux distribution
 If you are planning to boot a different operating system than ShredOS, populate the ``/tftpboot`` directory with the files from the ``syslinux`` directory using the following:
 ```
 sudo cp /usr/lib/PXELINUX/pxelinux.0 /tftpboot
@@ -82,6 +88,7 @@ sudo touch /tftpboot/pxelinux.cfg/default
 ```
 Edit the ``default`` file with the location of the kernel and any appropriate kernel options. See the ShredOS example below.
 
+#### PXE boot ShredOS
 If you are using ShredOS, [download the preconfigured PXELINUX environment](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz) and extract the files into the ``/tftpboot`` directory.
 
 Edit ``pxelinux.cfg/default`` to read the following:
@@ -104,11 +111,16 @@ LABEL shredos
 TIMEOUT 10
 ```
 
-That is, comment out the ``SERIAL`` line and the first ``APPEND`` line. Then, uncomment the second ``APPEND`` line and remove ``simple`` from the kernel options. Finally, change ``console=console=ttyS0,9600n8`` to ``console=tty0``. 
+That is, comment out the ``SERIAL`` line and the first ``APPEND`` line. Then, uncomment the second ``APPEND`` line and remove ``simple`` from the kernel options. Finally, change ``console=console=ttyS0,9600n8`` to ``console=tty0``. See [explanations of the available flags here](https://githubmemory.com/repo/Privex/shredos#kernel-boot-flags).
 
 > I found that the preconfigured environment is sometimes finicky. Check [the troubleshooting section](#troubleshooting-shredos-preconfigured-environment) for tips if you run into issues.
 
+#### Configure TFTP server
+
 Now that all the tftp files are in place, configure the server by editing ``/etc/default/tftpd-hpa``:
+```
+sudo nano /etc/default/tftpd-hpa
+```
 ```yaml
 TFTP_USERNAME="tftp"
 TFTP-DIRECTORY="/tftpboot"
@@ -122,8 +134,13 @@ sudo systemctl restart tftpd-hpa.service
 sudo systemctl status tftpd-hpa.service
 ```
 
+If not, check [the TFTP troubleshooting section](#troubleshooting-tftp-server) toward the bottom of this page.
+
 ### DHCP
 The defaults file for ``isc-dhcp-server`` can be found in ``/etc/default/isc-dhcpd-server``. It should start looking like this:
+```
+sudo nano /etc/default/isc-dhcpd-server
+```
 ```yaml
 ...
 # On what interfaces should the DHCP server (dhcpd) serve DHCP requests?
@@ -134,10 +151,15 @@ INTERFACESv6=""
 
 Edit the ``INTERFACESv4`` with the name of your interface:
 ```yaml
+...
 INTERFACESv4="eno1"
+...
 ```
 
 The config file can be found in ``/etc/dhcp/dhcpd.conf``. Edit it to contain this, replacing the addresses as necessary:
+```
+sudo nano /etc/dhcp/dhcpd.conf
+```
 ```yaml
 subnet 192.168.0.0 netmask 255.255.255.0 {
   range 192.168.0.106 192.168.0.200;
@@ -145,7 +167,7 @@ subnet 192.168.0.0 netmask 255.255.255.0 {
   default-lease-time 3600;
   max-lease-time 86400;
   next-server 192.168.0.105;
-  option bootfile-name "pxelinux.0";
+  option bootfile-name "pxelinux.0"; # see the below note about this line
   option tftp-server-name "192.168.0.105";
 }
 
@@ -157,12 +179,15 @@ host desktop {
 ddns-update-style none;
 authoritative;
 ```
+> Be aware that the ``bootfile-name`` option is subject to change. If you setup the ``/tftpboot`` directory manually, keep using ``option bootfile-name "pxelinux.0";``. If you copied the contents of the preconfigured ShredOS PXELINUX environment, instead use ``option bootfile-name "lpxelinux.0";`` If the preconfigured environment is giving issues, check [the troubleshooting section](#troubleshooting-shredos-preconfigured-environment) for tips.
 
 At this point, the DHCP server should be all setup. Check that it is working with the following:
 ```
 sudo systemctl restart isc-dhcp-server
 sudo systemctl status isc-dhcp-server
 ```
+
+You can test the DHCP server using [the instructions in the troubleshooting section of this page](#troubleshooting-dhcp-server).
 
 ### Boot to Network
 If both the TFTP and DHCP servers are working, plug the server and any other client computers into a network switch and boot the client to the network.
@@ -186,6 +211,9 @@ sudo apt-get -y install dnsmasq tftpd-hpa pxelinux syslinux
 ``dnsmasq`` will act as the DHCP server, and ``tftpd-hpa`` will be the TFTP server. ``pxelinux`` and ``syslinux`` provide the necessary files and functionality for PXE booting.
 
 Set a static IP by editing ``/etc/network/interfaces``:
+```
+sudo nano /etc/network/interfaces
+```
 ```yaml
 auto eno1
 iface eno1 inet static
@@ -193,11 +221,17 @@ address 192.168.0.105
 netmask 255.255.255.0
 ```
 
+Make sure to apply these changes by restarting the networking service:
+```
+sudo systemctl restart networking
+```
+If this gives you any errors, [try checking your interfaces](#unrecognized-interface-name).
+
 ### TFTP
 This TFTP server will be configured in the exact same way as the Ubuntu server. See [the TFTP section of the Ubuntu chapter](#tftp) for instructions.
 
 ### DHCP
-To configure ``dnsmasq``, edit the config file found in:
+To configure ``dnsmasq``, edit the config file found in ``/etc/dnsmasq.conf``:
 ```
 sudo nano /etc/dnsmasq.conf
 ```
@@ -218,80 +252,14 @@ sudo systemctl restart dnsmasq
 sudo systemctl status dnsmasq
 ```
 
+You can also test using Windows using [the instructions in the troubleshooting section](#troubleshooting-dhcp-server).
+
 ### Boot to Network
 If both the TFTP and DHCP servers are working, plug the server and any other client computers into a network switch and boot the client to the network.
 
 ---
 
 ## Troubleshooting and Workarounds
-### Some NUC's cannot PXE boot ShredOS.
-About half of the NUC's that I used came accross this issue:
-
-1. **The NUC network boots like normal**. It is assigned an IP by the DHCP server and it retrieves the ShredOS kernel and associated files correctly. 
-2. **ShredOS is automatically booted as normal**. The PXE boot menu appears as normal, and due to the ``TIMEOUT 10`` that was set, ShredOS is automatically loaded after 1 second.
-3. **Instead of opening, an error log begins**. The system switches to ``runlevel: 0`` and shuts down.
-
-Here is a recreation of the log:
-```
-Loading shredos/shredos... ok
-INIT: version 2.88 booting
-INIT: Entering runlevel: 3
-Starting logging: OK
-Starting thd: OK
-Populating /dev using udev: done
-Initializing random number generator... done.
-Starting network: OK
-
-INIT: Switching to runlevel: 0
-INIT: Sending process the TERM signal
-Stopping network: OK
-Saving random seed... done
-Stopping thd: OK
-Stopping logging: OK
-```
-
-```
-cat: can't open '/proc/cmdline': No such file or directory
-cat: can't open '/proc/cmdline': No such file or directory
-cat: can't open '/proc/cmdline': No such file or directory
-cat: can't open '/proc/cmdline': No such file or directory
-cat: can't open '/proc/cmdline': No such file or directory
-cat: can't open '/proc/cmdline': No such file or directory
-cat: can't open '/proc/cmdline': No such file or directory
-cat: can't open '/proc/cmdline': No such file or directory
-cat: can't open '/proc/cmdline': No such file or directory
-getty: bad speed: console
-cat: can't open '/proc/cmdline': No such file or directory
-[repeated 12 times]
-cat: can't open '/proc/cmdline': No such file or directory
-getty: bad speed: console
-INIT: Id "sole" respawning too fast: disabled for 5 minutes
-```
-The NUC's that do experience this issue look like they were all used for a single previous project, as they all have a similar label on the top of the case with the computer's name and its MAC address. Also, all of these NUC's have a 250 GB SSD as opposed to the 1 TB SSD's most of the other NUC's have. I couldn't find any other notable differenced between the devices.
-
-#### ``can't open '/proc/cmdline': No such file or directory``
-I found [this forum post about a similar issue with DBAN](https://sourceforge.net/p/dban/discussion/208932/thread/6bc10266/). I followed the steps some users posted about:
-
-1. **Disable secure boot**. First I tried disabling secure boot and UEFI in the NUC's BIOS. To do so, I:
-    - powered on the NUC,
-    - tapped F2 to open the VisualBIOS,
-    - navigated to "Advanced" and then to the "Boot" tab,
-    - navigated to the "Secure Boot" tab within the Boot menu and ensured the "Secure Boot" option was unchecked,
-    - navigated from the "Secure Boot" tab to "Boot Priority", and I unchecked the "UEFI Boot" option under the "UEFI Boot Priority" column.
-
-After following these steps, I was still unable to boot to ShredOS, as the same error still occurred.
-
-2. **Append kernel parameters ``acpi=off nousb``**. I figured that since DBAN is the progenitor of ShredOS, these boot options might fix something. After network booting ShredOS, I made sure to hit the tab key to edit the boot options, adding these two parameters. Since some boot options were set in the ``pxelinux.cgf/default`` file already, the full options now read:
-```
-shredos/shredos console=tty0 autonuke method=zero rounds=1 nwipe_verify=last loglevel=0 console_baud=0 acpi=off nousb
-```
-Despite this change, the same error message occurs. This time, however, the NUC doesn't shut off immediately, instead stalling on the last screen.
-
-#### Workaround - Manually Boot ShredOS from USB
-While I was unable to find a way to get the PXE server working as intended with these NUC's, ShredOS started with no issues from a bootable USB. Since it took about the same about of time to plug in the USB as it did to plug in a network cable, I decided just to boot any NUC's that didn't work with the network boot with the USB.
-
-For reference, both the USB and the netboot image came from the same place: [Privex's ShredOS fork](https://githubmemory.com/repo/Privex/shredos). Specifically this [Bootable ShredOS ISO](https://files.privex.io/images/iso/shredos/v1.1/shredos.iso) and this [ShredOS Preconfigured PXE boot environment using PXELinux](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz).
-
 ### Troubleshooting TFTP Server
 #### Transfer Test Files to Windows
 You may want to make sure your TFTP server is working. I did so on my Windows laptop with the following steps:
@@ -422,6 +390,74 @@ sudo systemctl restart tftpd-hpa.service
 sudo systemctl status tftpd-hpa.service
 ```
 
+### Issue - Some NUC's cannot PXE boot ShredOS.
+About half of the NUC's that I used came accross this issue:
+
+1. **The NUC network boots like normal**. It is assigned an IP by the DHCP server and it retrieves the ShredOS kernel and associated files correctly. 
+2. **ShredOS is automatically booted as normal**. The PXE boot menu appears as normal, and due to the ``TIMEOUT 10`` that was set, ShredOS is automatically loaded after 1 second.
+3. **Instead of opening, an error log begins**. The system switches to ``runlevel: 0`` and shuts down.
+
+Here is a recreation of the log:
+```
+Loading shredos/shredos... ok
+INIT: version 2.88 booting
+INIT: Entering runlevel: 3
+Starting logging: OK
+Starting thd: OK
+Populating /dev using udev: done
+Initializing random number generator... done.
+Starting network: OK
+
+INIT: Switching to runlevel: 0
+INIT: Sending process the TERM signal
+Stopping network: OK
+Saving random seed... done
+Stopping thd: OK
+Stopping logging: OK
+```
+
+```
+cat: can't open '/proc/cmdline': No such file or directory
+cat: can't open '/proc/cmdline': No such file or directory
+cat: can't open '/proc/cmdline': No such file or directory
+cat: can't open '/proc/cmdline': No such file or directory
+cat: can't open '/proc/cmdline': No such file or directory
+cat: can't open '/proc/cmdline': No such file or directory
+cat: can't open '/proc/cmdline': No such file or directory
+cat: can't open '/proc/cmdline': No such file or directory
+cat: can't open '/proc/cmdline': No such file or directory
+getty: bad speed: console
+cat: can't open '/proc/cmdline': No such file or directory
+[repeated 12 times]
+cat: can't open '/proc/cmdline': No such file or directory
+getty: bad speed: console
+INIT: Id "sole" respawning too fast: disabled for 5 minutes
+```
+The NUC's that do experience this issue look like they were all used for a single previous project, as they all have a similar label on the top of the case with the computer's name and its MAC address. Also, all of these NUC's have a 250 GB SSD as opposed to the 1 TB SSD's most of the other NUC's have. I couldn't find any other notable differenced between the devices.
+
+#### ``can't open '/proc/cmdline': No such file or directory``
+I found [this forum post about a similar issue with DBAN](https://sourceforge.net/p/dban/discussion/208932/thread/6bc10266/). I followed the steps some users posted about:
+
+1. **Disable secure boot**. First I tried disabling secure boot and UEFI in the NUC's BIOS. To do so, I:
+    - powered on the NUC,
+    - tapped F2 to open the VisualBIOS,
+    - navigated to "Advanced" and then to the "Boot" tab,
+    - navigated to the "Secure Boot" tab within the Boot menu and ensured the "Secure Boot" option was unchecked,
+    - navigated from the "Secure Boot" tab to "Boot Priority", and I unchecked the "UEFI Boot" option under the "UEFI Boot Priority" column.
+
+After following these steps, I was still unable to boot to ShredOS, as the same error still occurred.
+
+2. **Append kernel parameters ``acpi=off nousb``**. I figured that since DBAN is the progenitor of ShredOS, these boot options might fix something. After network booting ShredOS, I made sure to hit the tab key to edit the boot options, adding these two parameters. Since some boot options were set in the ``pxelinux.cgf/default`` file already, the full options now read:
+```
+shredos/shredos console=tty0 autonuke method=zero rounds=1 nwipe_verify=last loglevel=0 console_baud=0 acpi=off nousb
+```
+Despite this change, the same error message occurs. This time, however, the NUC doesn't shut off immediately, instead stalling on the last screen.
+
+#### Workaround - Manually Boot ShredOS from USB
+While I was unable to find a way to get the PXE server working as intended with these NUC's, ShredOS started with no issues from a bootable USB. Since it took about the same about of time to plug in the USB as it did to plug in a network cable, I decided just to boot any NUC's that didn't work with the network boot with the USB.
+
+For reference, both the USB and the netboot image came from the same place: [Privex's ShredOS fork](https://githubmemory.com/repo/Privex/shredos). Specifically this [Bootable ShredOS ISO](https://files.privex.io/images/iso/shredos/v1.1/shredos.iso) and this [ShredOS Preconfigured PXE boot environment using PXELinux](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz).
+
 ---
 
 ## Running this server in the future
@@ -471,7 +507,7 @@ I had the following equipment available to use during this project:
 Below is some information I learned over the course of the project, which may be helpful to someone who doesn't know much terminology.
 
 #### 1. PXE
-- **PXE** (commonly pronounced "*pixie*", or used in the phrase "*PXE boot*"), [_Preboot eXecution Environment_](https://en.wikipedia.org/wiki/Preboot_Execution_Environment), is a specification describing a standardized environment that allows PXE-enabled client computers to boot a specific operating system or other software (configured and distributed by a server) over a network.
+- **PXE** (pronounced "*pixie*", or used in the phrase "*PXE boot*"), [_Preboot eXecution Environment_](https://en.wikipedia.org/wiki/Preboot_Execution_Environment), is a specification describing a standardized environment that allows PXE-enabled client computers to boot a specific operating system or other software (configured and distributed by a server) over a network.
 - Since PXE is a widely adopted standard, most computers can be PXE-enabled through their BIOS or are already PXE-enabled.
 - In practice, setting up a PXE boot server entails configuring a **DHCP** server and a **TFTP** or other file transfer system server (see below).
 
@@ -487,7 +523,7 @@ Below is some information I learned over the course of the project, which may be
 In this way, a PXE boot server needs:
 1. a way for the client computers to communicate with the server (DHCP),
 2. a method of transferring files from the server to the client (TFTP), and
-3. the set of instructions for the client to follow (the bootloader and kernel).
+3. the operating system for the client to boot (the bootloader and kernel).
 
 ### Links
 Here are links that may be helpful if attempting a different implementation of a PXE server:
