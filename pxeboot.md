@@ -1,6 +1,6 @@
 # PXE Boot ShredOS
 
-This document will walk through the processes I used to wipe 50 Intel NUC's by setting up a PXE server to network boot ShredOS. I will cover the server setup in both [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/) and [SLAX](https://www.slax.org/). You can also find troubleshooting and workaround that might be useful. Finally, the last section contains information about the equipment I used as well as other notes.
+This document will walk through the processes I used to set up a PXE server to network boot ShredOS. I will cover the server setup in both [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/) and [SLAX](https://www.slax.org/). You can also find troubleshooting and workaround that might be useful. Finally, the last section contains information about the equipment I used as well as other notes.
 
 While I setup the SLAX and Ubuntu servers in slightly different ways, either way should work on either operating system as the packages used are system-independent.
 
@@ -40,7 +40,18 @@ network:
       nameserver:
         addresses: [1.1.1.1,1.0.0.1]
 ```
-I set this server's IP to 192.168.0.105
+I set this server's IP to ``192.168.0.105``. Make sure to change ``eno1`` to the name of the interface you will use to run the server. You can find this using:
+```
+ip a
+```
+In my case, I see:
+```
+1: lo: ...
+...
+2: eno1: <ND-CARRIER,BROADCAST,MULTICAST,UP> ...
+```
+
+The [NUC](#equipment)'s only have one ethernet port, which I have plugged into the network switch, so ``eno1`` is the name of the ethernet port that will be used for this.
 
 ### TFTP
 The TFTP server will copy the bootloader and kernel to the client computer. To start, create a place to store the files which will be transferred:
@@ -112,19 +123,6 @@ sudo systemctl status tftpd-hpa.service
 ```
 
 ### DHCP
-In order to configure the DCHP server, you will need to know the name of the interface you are using. You can find this using:
-```
-ip a
-```
-In my case, I see:
-```
-1: lo: ...
-...
-2: eno1: <ND-CARRIER,BROADCAST,MULTICAST,UP> ...
-```
-
-The NUC's only have one ethernet port, which I have plugged into the network switch, so ``eno1`` is the name of the ethernet port that will be used for this.
-
 The defaults file for ``isc-dhcp-server`` can be found in ``/etc/default/isc-dhcpd-server``. It should start looking like this:
 ```yaml
 ...
@@ -292,7 +290,7 @@ ShredOS installed and booted with no issues from the USB, and since it took abou
 
 For reference, both the USB and the netboot image came from the same place: [Privex's ShredOS fork](https://githubmemory.com/repo/Privex/shredos). Specifically this [Bootable ShredOS ISO](https://files.privex.io/images/iso/shredos/v1.1/shredos.iso) and this [ShredOS Preconfigured PXE boot environment using PXELinux](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz).
 
-### Troubleshooting TFTP Server
+### Troubleshooting TFTP Server - from Windows
 You may want to make sure your TFTP server is working. I did so on my Windows laptop with the following steps:
 1. Download the TFTP Client feature
     1. Open the Control Panel
@@ -309,6 +307,36 @@ tftp 192.168.0.105 GET "menu.c32"
 ```
 Transfer successful: 27672 bytes in 1 second(s), 27672 bytes/s
 ```
+
+### Troubleshooting TFTP Server - from the server
+When trying to setup the TFTP server in SLAX, I found that sometimes the server would not start, giving me the following error when I checked the server status:
+```
+sudo systemctl status tftpd-hpa
+```
+```
+... Control process exited, code=exited, status=71/OSERR
+```
+
+I also checked ``journalctl -xe`` and found the following error log:
+```
+... cannot bind to local IPv4 socket: Address already in use
+```
+
+I configured the TFTP server to run on port 69. So, I checked what was running on that port:
+```
+sudo netstat -lnp | grep 69
+```
+```
+udp6    0     0   :::69         :::*            1254/xinetd
+```
+
+To resolve this, I stopped the xinetd service:
+```
+sudo systemctl stop xinetd
+```
+
+After restarting the ``tftpd-hpa`` service, this resolved the issue.
+
 
 ### Troubleshooting DHCP Server
 You may also want to test your DHCP server. If you are connected to the DHCP server's network on a Windows computer, follow the steps below:
