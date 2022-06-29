@@ -1,8 +1,8 @@
 # PXE Boot ShredOS
 
-This document will walk through the processes I used to set up a PXE server to network boot ShredOS. I will cover the server setup in both [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/) and [SLAX](https://www.slax.org/). You can also find troubleshooting and workaround that might be useful. Finally, the last section contains information about the equipment I used as well as other notes.
+This document will walk through the processes I used to set up a PXE server to network boot ShredOS. I will cover the server setup in both [Ubuntu Server 20.04.4 LTS](https://releases.ubuntu.com/20.04/) and [SLAX](https://www.slax.org/). I have included a section with troubleshooting steps and workarounds that might be useful, and the last section contains information about the equipment I used as well as other notes.
 
-While I setup the SLAX and Ubuntu servers in slightly different ways, either way should work on either operating system as the packages used are system-independent.
+While I setup the SLAX and Ubuntu servers in slightly different ways, either method should work on either operating system as the packages used are system-independent.
 
 #### Contents:
 - [Ubuntu Server 20.04.4](#ubuntu-server-20044)
@@ -175,6 +175,8 @@ If both the TFTP and DHCP servers are working, plug the server and any other cli
 ## SLAX Linux
 [**SLAX**](https://www.slax.org/) is a small and portable Linux operating system which runs from a USB without needing to be installed onto the hard drive, and it has built-in PXE boot capabilities. SLAX is preconfigured for PXE Booting other installations of SLAX over a network: [how PXE boot works in SLAX](https://www.slax.org/blog/20662-How-PXE-boot-works-in-Slax.html). However, this PXE Boot is only helpful if you want to use SLAX on the PXE clients. I manually setup a PXE server using the steps below.
 
+If you choose to use SLAX as a portable PXE server, I recommend using a USB or another form of writable media [which will allow for persistent changes](https://www.slax.org/starting.php#:~:text=select%20any%20option.-,Persistent%20changes,restored%20next%20time%20you%20boot.).
+
 ### Setup
 To start, install the necessary packages:
 ```
@@ -201,6 +203,9 @@ sudo nano /etc/dnsmasq.conf
 ```
 ```yaml
 dhcp-range=192.168.0.106,192.168.0.200,6h
+# The following line is subject to change.
+# Use pxelinux.0 if the /tftpboot directory was setup manually.
+# Use lpxelinux.0 if ithe /tftpboot directory was copied from the ShredOS preconfigured PXELINUX environment.
 dhcp-boot=pxelinux.0,192.168.0.105
 interface=eno1
 # dhcp-option 66 sets the "next-server", or the location of the tftp server
@@ -223,7 +228,7 @@ If both the TFTP and DHCP servers are working, plug the server and any other cli
 About half of the NUC's that I used came accross this issue:
 
 1. **The NUC network boots like normal**. It is assigned an IP by the DHCP server and it retrieves the ShredOS kernel and associated files correctly. 
-2. **ShredOS is automatically booted as normal**. As described above, the PXE boot menu appears as normal, and due to the ``TIMEOUT 10`` that was set, ShredOS is automatically loaded after 1 second.
+2. **ShredOS is automatically booted as normal**. The PXE boot menu appears as normal, and due to the ``TIMEOUT 10`` that was set, ShredOS is automatically loaded after 1 second.
 3. **Instead of opening, an error log begins**. The system switches to ``runlevel: 0`` and shuts down.
 
 Here is a recreation of the log:
@@ -262,35 +267,33 @@ cat: can't open '/proc/cmdline': No such file or directory
 getty: bad speed: console
 INIT: Id "sole" respawning too fast: disabled for 5 minutes
 ```
-The NUC's that do experience this issue look like they were all used for a single previous project, as they all have a similar label on the top of the case with the computer's name and its MAC address. Also, all of these NUC's have a 250 GB SSD as opposed to the 1 TB SSD's most of the other NUC's have. Other than this, I could not find any other differences.
+The NUC's that do experience this issue look like they were all used for a single previous project, as they all have a similar label on the top of the case with the computer's name and its MAC address. Also, all of these NUC's have a 250 GB SSD as opposed to the 1 TB SSD's most of the other NUC's have. I couldn't find any other notable differenced between the devices.
 
 #### ``can't open '/proc/cmdline': No such file or directory``
-I found this forum post about a [similar issue with DBAN](https://sourceforge.net/p/dban/discussion/208932/thread/6bc10266/). I followed the steps some users posted about:
+I found [this forum post about a similar issue with DBAN](https://sourceforge.net/p/dban/discussion/208932/thread/6bc10266/). I followed the steps some users posted about:
 
 1. **Disable secure boot**. First I tried disabling secure boot and UEFI in the NUC's BIOS. To do so, I:
     - powered on the NUC,
     - tapped F2 to open the VisualBIOS,
     - navigated to "Advanced" and then to the "Boot" tab,
-    - navigated to the "Secure Boot" tab within the Boot menu and ensured the "Secure Boot" option was unchecked.
-    - Then, I navigated from the "Secure Boot" tab to "Boot Priority", and I unchecked the "UEFI Boot" option under the "UEFI Boot Priority" column.
+    - navigated to the "Secure Boot" tab within the Boot menu and ensured the "Secure Boot" option was unchecked,
+    - navigated from the "Secure Boot" tab to "Boot Priority", and I unchecked the "UEFI Boot" option under the "UEFI Boot Priority" column.
 
-&emsp;&emsp;&emsp;After following these steps, I was still unable to boot to ShredOS, as the same error still occurred.
+After following these steps, I was still unable to boot to ShredOS, as the same error still occurred.
 
-2. **Append kernel parameters ``acpi=off nousb``**. I figured that since DBAN is the progenitor to ShredOS, these boot options might fix something. After network booting ShredOS, I made sure to hit the tab key to edit the boot options, adding these two parameters. Since some boot options were set in the ``pxelinux.cgf/default`` file already, the full options now read:
+2. **Append kernel parameters ``acpi=off nousb``**. I figured that since DBAN is the progenitor of ShredOS, these boot options might fix something. After network booting ShredOS, I made sure to hit the tab key to edit the boot options, adding these two parameters. Since some boot options were set in the ``pxelinux.cgf/default`` file already, the full options now read:
 ```
 shredos/shredos console=tty0 autonuke method=zero rounds=1 nwipe_verify=last loglevel=0 console_baud=0 acpi=off nousb
 ```
-&emsp;&emsp;&emsp;Despite this change, the same error message occurs. This time, however, the NUC doesn't shut off immediately, instead stalling on the last screen.
-
+Despite this change, the same error message occurs. This time, however, the NUC doesn't shut off immediately, instead stalling on the last screen.
 
 #### Workaround - Manually Boot ShredOS from USB
-Since I was unable to find a way to get around this issue, I tested whether I could boot ShredOS from a bootable USB I had.
-
-ShredOS installed and booted with no issues from the USB, and since it took about the same about of time to plug in the USB as it did to plug in a network cable, I decided just to boot any NUC's that didn't work with the network boot with the USB.
+While I was unable to find a way to get the PXE server working as intended with these NUC's, ShredOS started with no issues from a bootable USB. Since it took about the same about of time to plug in the USB as it did to plug in a network cable, I decided just to boot any NUC's that didn't work with the network boot with the USB.
 
 For reference, both the USB and the netboot image came from the same place: [Privex's ShredOS fork](https://githubmemory.com/repo/Privex/shredos). Specifically this [Bootable ShredOS ISO](https://files.privex.io/images/iso/shredos/v1.1/shredos.iso) and this [ShredOS Preconfigured PXE boot environment using PXELinux](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz).
 
-### Troubleshooting TFTP Server - from Windows
+### Troubleshooting TFTP Server
+#### Transfer Test Files to Windows
 You may want to make sure your TFTP server is working. I did so on my Windows laptop with the following steps:
 1. Download the TFTP Client feature
     1. Open the Control Panel
@@ -308,7 +311,7 @@ tftp 192.168.0.105 GET "menu.c32"
 Transfer successful: 27672 bytes in 1 second(s), 27672 bytes/s
 ```
 
-### Troubleshooting TFTP Server - from the server
+#### Port Conflict
 When trying to setup the TFTP server in SLAX, I found that sometimes the server would not start, giving me the following error when I checked the server status:
 ```
 sudo systemctl status tftpd-hpa
@@ -337,7 +340,7 @@ sudo systemctl stop xinetd
 
 After restarting the ``tftpd-hpa`` service, this resolved the issue.
 
-### Troubleshooting TFTP Server - Interface Names
+#### Unrecognized Interface Name
 Another TFTP issue I ran into that wasn't immediately apparent had to do with my network interfaces. When I tested the SLAX setup on a different device (moving the SLAX USB from a NUC to my Windows laptop), I noticed that ``tftpd-hpa`` couldn't start, giving the same status as the above issue:
 ```
 sudo systemctl status tftpd-hpa
@@ -369,6 +372,7 @@ sudo systemctl restart tftpd-hpa
 ```
 
 ### Troubleshooting DHCP Server
+#### Test DHCP from Windows
 You may also want to test your DHCP server. If you are connected to the DHCP server's network on a Windows computer, follow the steps below:
 1. Open the Command Prompt
 2. Type:
@@ -450,7 +454,7 @@ To start the SLAX server:
 sudo systemctl restart dnsmasq
 sudo systemctl restart tftpd-hpa
 ```
-If these refuse to start, [check your network interfaces](#troubleshooting-tftp-server---interface-names).
+If these refuse to start, [check your network interfaces](#unrecognized-interface-name).
 - Plug another computer into the switch and boot it to the network.
 
 ---
