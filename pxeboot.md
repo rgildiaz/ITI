@@ -322,7 +322,7 @@ I also checked ``journalctl -xe`` and found the following error log:
 ... cannot bind to local IPv4 socket: Address already in use
 ```
 
-I configured the TFTP server to run on port 69. So, I checked what was running on that port:
+I configured the TFTP server to run on port 69. So, I checked what was running on that port at the suggestion of [this Unix/Linux StackExchange thread](https://unix.stackexchange.com/questions/359630/the-tftpd-hpa-doesnt-start-after-update):
 ```
 sudo netstat -lnp | grep 69
 ```
@@ -337,6 +337,36 @@ sudo systemctl stop xinetd
 
 After restarting the ``tftpd-hpa`` service, this resolved the issue.
 
+### Troubleshooting TFTP Server - Interface Names
+Another TFTP issue I ran into that wasn't immediately apparent had to do with my network interfaces. When I tested the SLAX setup on a different device (moving the SLAX USB from a NUC to my Windows laptop), I noticed that ``tftpd-hpa`` couldn't start, giving the same status as the above issue:
+```
+sudo systemctl status tftpd-hpa
+```
+```
+... Control process exited, code=exited, status=71/OSERR
+```
+
+I found that the ``networking`` service also wasn't working after checking it using:
+```
+sudo systemctl status networking
+```
+```
+...
+... interface eno1 not found.
+```
+
+Since I was using a different device, the name of the network port must have changed. I checked this with the ``ip a`` command. This time, I found:
+```
+lo: ...
+...
+enp0s31f6: ...
+```
+
+I replaced all instances of ``eno1`` with ``enp0s31f6`` in the ``/etc/network/interfaces`` file. I restarted the ``networking`` service, restarted ``tftpd-hpa``, and the issue was resolved.
+```
+sudo systemctl restart networking
+sudo systemctl restart tftpd-hpa
+```
 
 ### Troubleshooting DHCP Server
 You may also want to test your DHCP server. If you are connected to the DHCP server's network on a Windows computer, follow the steps below:
@@ -420,6 +450,7 @@ To start the SLAX server:
 sudo systemctl restart dnsmasq
 sudo systemctl restart tftpd-hpa
 ```
+If these refuse to start, [check your network interfaces](#troubleshooting-tftp-server---interface-names).
 - Plug another computer into the switch and boot it to the network.
 
 ---
