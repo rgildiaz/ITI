@@ -352,6 +352,22 @@ ipconfig /all | find /i “DHCP Server”
    DHCP Server . . . . . . . . . . . : 192.168.0.105
 ```
 
+#### Test DHCP from Server
+To check the assigned IP addresses and devices connected to the DHCP server, follow the command:
+```
+dhcp-lease-list --lease
+```
+
+This should output a list of current leases. Here is an example of what I see:
+```
+MAC                 IP              hostname        valid until           manufacturer
+===================================================================================================
+8c:04:ba:35:4b:76   192.168.0.107   DESKTOP-H2PRVN  2022-07-05 17:03:14   -NA-
+b0:39:56:73:b9:6c   192.168.0.109   -NA-            2022-07-05 17:26:24   -NA-
+```
+
+In this case, ``DESKTOP-H2PRVN`` at ``192.168.0.107`` is the laptop I am connected to the server with. The device at ``192.168.0.109`` is the switch itself.
+
 ### Troubleshooting ShredOS Preconfigured Environment
 The [preconfigured ShredOS PXELINUX environment](https://files.privex.io/images/iso/shredos/v1.1/pxeboot.tar.gz) directs the system to look in the ``tftpboot/sys/`` directory for the necessary booting files. However, sometimes this doesn't work. If the default setup for the environment isn't booting, try editing the ``/tftpboot/pxelinux.cfg/default`` file to read:
 
