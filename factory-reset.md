@@ -42,6 +42,17 @@ Once you have set an IP address in this way, the switch can be managed via the b
 1. Connect the Aruba and your computer to a switch.
 2. Open a web browser and search for the IP address that you set via the serial console.
 
+
+### Copy a config file from a tftp server
+```
+Aruba-3810M# copy tftp config "config1" 192.168.0.105 "testconfig.pcc"
+```
+
+``copy tftp``: copy a file from a tftp server.
+``config "config1"``: expect the file to be of type ``config`` and copy the file's contents to ``config1``.
+``192.168.0.105``: the IP of the tftp server.
+``"testconfig.pcc"``: the name of the file to be copied.
+
 ## SEL 2730M Switch
 
 ## Cisco 4321 Router
