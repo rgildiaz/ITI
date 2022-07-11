@@ -154,6 +154,19 @@ I will use [PuTTY](https://www.putty.org/) as a [VT 100 terminal](https://en.wik
         - Flow control: XON/XOFF
 3. Click the "Open" button at the bottom of the window to launch the terminal window.
 
+Once connected via serial port, attempt to check the configuration register value using the ``show version`` command. Write down this value for later:
+```
+cisco> show version
+```
+```
+...
+0K bytes of WebUI ODM Files at webui:.
+
+Configuration register is 0x2012
+```
+
+For more information, refer to this article from Cisco about [replacing or recovering a lost password](https://www.cisco.com/c/en/us/td/docs/routers/access/4400/troubleshooting/guide/isr4400trbl/isr4400trbl02.html).
+
 ### Factory Reset
 If you have administrator access to the router and can connect via your network, follow the instructions below. Otherwise, [start by recovering and resetting the password and secret via a serial connection](#password-and-secret-recovery-and-reset).
 
