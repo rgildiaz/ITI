@@ -1,29 +1,27 @@
 # Testing 10G SFP+ Bidirectional Transceivers
-This page will document the process I used to test a pair of 10G Bidi's using a simple network. For a full list of equipment used, see the last section about [my equipment & other notes](#equipment--other-notes).
+This page will document the process I used to test a pair of 10G Bidi's using a simple network setup around a pair of Aruba 3810M network switches. For a full list of equipment used, see the last section about [my equipment & other notes](#equipment--other-notes).
 
 #### Contents:
-- [Testing 10G SFP+ Bidirectional Transceivers](#testing-10g-sfp-bidirectional-transceivers)
-      - [Contents:](#contents)
-  - [Switch Setup](#switch-setup)
-    - [Initial Configuration](#initial-configuration)
-    - [SSH Access](#ssh-access)
-    - [Connect the Switches via Fiber](#connect-the-switches-via-fiber)
-  - [Network Architecture & Configuration](#network-architecture--configuration)
-    - [DHCP](#dhcp)
-    - [DHCP Clients](#dhcp-clients)
-  - [iPerf & Testing](#iperf--testing)
-  - [Troubleshooting & Workarounds](#troubleshooting--workarounds)
-    - [Test Fiber Connection](#test-fiber-connection)
-    - [DHCP](#dhcp-1)
-      - [Check DHCP Leases](#check-dhcp-leases)
-      - [Test DHCP from Windows](#test-dhcp-from-windows)
-    - [Rate-limiting](#rate-limiting)
-  - [Equipment & Other Notes](#equipment--other-notes)
+- [Switch Setup](#switch-setup)
+- [Network Architecture & Configuration](#network-architecture--configuration)
+- [iPerf & Testing](#iperf--testing)
+- [Troubleshooting & Workarounds](#troubleshooting--workarounds)
+- [Equipment & Other Notes](#equipment--other-notes)
 
 ---
 
 ## Switch Setup
-To begin setting up for this process, configure the switches. In my case, I used a pair of [Aruba 3810M switches](#equipment--other-notes) each outfitted with a [JL083A expansion module for SFP+](#equipment--other-notes). To configure a new or factory reset switch, follow the steps below.
+For this project, I used a pair of [Aruba 3810M switches](#equipment--other-notes), each outfitted with a [JL083A expansion module for SFP+](#equipment--other-notes). To factory reset a switch or configure a factory-default switch, follow the steps below.
+
+### Factory Reset
+To reset the Aruba 3810M, follow the instructions on page 94 of [this Installation and Getting Started Guide](https://www.arubanetworks.com/techdocs/hardware/switches/3810/IGSG/3810_igsg.pdf). Specifically, I used these instructions:
+
+1. Using pointed objects, simultaneously press both the Reset and Clear buttons on the front of the switch.
+2. Continue to press the Clear button while releasing the Reset button.
+3. When the Global Status LED begins to fast flash orange (after approximately 5 seconds), release the Clear button.
+4. The switch will then complete its boot process and begin operating with its configuration restored to the factory default settings.
+
+I found that this process takes less than 5 minutes.
 
 ### Initial Configuration
 A factory-default switch can only be managed through a direct console connection. To access the serial console, connect a micro USB &rarr; USB-A cable to the micro USB port on the right side of the front of the switch, labeled "Console Ports". Connect the USB-A side of the cable to a computer which has [PuTTY](https://www.putty.org/) installed. PuTTY will act as a serial console emulator since this serial micro USB port expects to send information to a [VT 100 terminal](https://en.wikipedia.org/wiki/VT100). 
@@ -47,7 +45,33 @@ To setup PuTTY for this purpose in Windows 10, follow the steps below:
 > Once the PuTTY terminal window boots, it may appear blank. Pressing RETURN should show the command line prompt, which in my case is ``Aruba-3810M-48G-PoEP-1-slot# ``. If this appears, you are connected correctly.
 
 To complete the minimal configuration through the console port, follow these instructions:
-1. Type the ``setup`` command to enter the Switch Setup screen.
+1. Type the ``setup`` command to enter the Switch Setup screen. You should see something like the following:
+```
+Aruba-3810M                                                12-Jul-2022  14:52:07
+===========================- TELNET - MANAGER MODE -============================
+                                  Switch Setup
+
+  System Name : Aruba-3810M-48G-PoEP-1-slot
+  System Contact :
+  Manager Password : ****************
+  Confirm Password : ****************
+  Logon Default : CLI                   Time Zone [0] : 0
+  Community Name : public
+  Spanning Tree Enabled [No] : No       Default Gateway : 192.168.0.1
+  Time Sync Method [TIMEP/SNTP] : TIMEP/SNTP
+  TIMEP Mode [Disabled] : Disabled
+
+
+  IP Config [Manual] : Manual
+
+  IP Address  : 192.168.0.100
+  Subnet Mask : 255.255.255.0
+ Actions->   Cancel     Edit     Save     Help
+
+Enter System Name - up to 32 characters.
+Use arrow keys to change field selection, <Space> to toggle field choices,
+and <Enter> to go to Actions.
+```
 2. Use the TAB key or the arrow keys to navigate to the ``Manager Password`` field. Input a new password and confirm the same password on the following line.
 3. Navigate to the ``IP Config`` field and use the space bar to select the ``Manual`` option.
 4. Navigate to the ``IP Address`` field and set a static IP address. Set the appropriate subnet mask on the next line. This information will apply to the default VLAN. I set mine to:
@@ -73,22 +97,23 @@ Make sure to follow these steps for both switches which will be used. When setti
 ### Connect the Switches via Fiber
 Once both switches have been configured, connect them using the bidi's and a fiber cable. Make sure to use bidi's which are compatible with the switches you are using. After inserting each bidi into each switch, it should blink green within ~5 seconds, indicating that the switch is compatible and the bidi is ready for a connection.
 
-Since the bidi's accept an LC connection, I used a 30 m ST-ST cable, two ST-ST adapters, and two ST-LC cables to connect them. Since they have been configured on the same subnet, they should be able to communicate across the fiber connection. 
+Since the bidi's accept an LC connection, I used a 30 m ST-ST cable, two ST-ST adapters, and two ST-LC cables to connect them. Since they have been configured on the same subnet, they should be able to communicate across the fiber connection without any further configuration.
 
 ## Network Architecture & Configuration
-Now that the switches have been configured, we can begin setting up a network on them. I setup my network using 6 [Intel NUC](#equipment--other-notes)'s, one of which acts as a DHCP server, and a 6-port [logic supply](#equipment--other-notes).
+Now that the switches have been configured, a network can be setup using them. I setup my network using 6 [Intel NUC](#equipment--other-notes)'s, one of which acts as a DHCP server, and a 6-port [logic supply](#equipment--other-notes).
 
 ### DHCP
-To start, configure the DHCP server. Due to a previous project, I already had one configured using Ubuntu Server 20.04. To configure a similar server, follow the steps below:
-1. Install Ubuntu Server 20.04 on an Intel NUC. I used a bootable USB installer.
+To start, configure the DHCP server. Due to a previous project, I already had one configured using [Ubuntu Server 20.04](https://releases.ubuntu.com/20.04/). To configure a similar server, follow the steps below:
+1. Install Ubuntu Server 20.04 on an Intel NUC. I used a bootable USB installer, created with [this Ubuntu Server ISO](https://releases.ubuntu.com/20.04/ubuntu-20.04.4-live-server-amd64.iso) and a tool like [Rufus](https://rufus.ie/en/).
 2. There is only one necessary package for this project, ``isc-dhcp-server``:
 ```
 sudo apt-get install isc-dhcp-server
 ```
-3. Configure a static IP:
+3. The DHCP server will work best if the server is configured with a static IP. In Ubuntu 20.04, this can be set through the ``netplan``:
 ```
 sudo nano /etc/netplan/01-netcfg.yaml
 ```
+Change the text in this ``01-netcfg.yaml`` file to this:
 ```yaml
 network:
   version: 2
@@ -102,14 +127,16 @@ network:
       nameservers:
         addresses: [1.1.1.1, 1.0.0.1]
 ```
-> make sure to change ``eno1`` to the correct ethernet port name.
+> make sure to change ``eno1`` to the correct interface name.
+Apply the netplan with this command:
 ```
 sudo netplan apply
 ```
-4. Configure the DHCP server:
+4. Once a static IP is set, the DHCP server can be configured through ``dhcpd.conf``:
 ```
 sudo nano /etc/dhcp/dhcpd.conf
 ```
+Make sure the following is included in this config file:
 ```yaml
 # make sure to update the ip and mac addresses as appropriate.
 subnet 192.168.2.0 netmask 255.255.255.0 {
@@ -130,7 +157,7 @@ ddns-update-style none;
 
 authoritative;
 ```
-5. Restart the server and check its status.
+5. To apply the changes and ensure it is working, restart the server and check its status.
 ```
 sudo systemctl restart isc-dhcp-server
 sudo systemctl status isc-dhcp-server
@@ -163,12 +190,12 @@ Jul 11 20:04:33 server dhcpd[902]: DHCPACK on 192.168.2.127 to 94:c6:91:a2:2a:db
 If not, check the [troubleshooting section](#troubleshooting--workarounds) for possible solutions.
 
 ### DHCP Clients
-Now that the DHCP server has been setup, other interfaces connected to the network will be automatically assigned an IP. In my case, I connected 5 more NUC's as well as all 6 ports of the logic supply I used. I plan on configuring the logic supply interfaces as the iPerf servers and all the NUC's as iPerf clients.
+Now that the DHCP server has been setup, other interfaces connected to the network will be automatically assigned an IP. In my case, I connected 5 more NUC's as well as all 6 ports of the logic supply I used. I plan on configuring the logic supply interfaces as the [iPerf](https://iperf.fr/) servers and all the NUC's as iPerf clients.
 
-Note that more computers can easily be added to the network if necessary. I didn't need to test all the way to 10G, so I only tested to 6G, but the DHCP server has more than enough range to expand this network up to and past the 20 interfaces required for a 10G test.
+Note that more computers can easily be added to the network if necessary. While I didn't need to test all the way to 10G, the network can easily be expanded to encompass 20 interfaces, allowing for a 10G test. Going forward, I am only testing up to 6G.
 
-I installed the same release of Ubuntu Server 20.04 on all the other devices I used for this. The last step before testing the network is to install [iPerf](https://iperf.fr/) on all the devices. Since I am working without a direct internet connection on all the devices used, I copied the appropriate [Ubuntu binaries] to a flash drive and manually installed in on each device:
-1. Download the [iPerf Ubuntu binaries](https://iperf.fr/iperf-download.php#ubuntu) to a computer which has network connection. I used iPerf_3.9.deb + libiperf0_3.9-1.deb + libsctp1_1.0.18+dfsg-1.deb. Copy the files to a flash drive. 
+I installed the same release of Ubuntu Server 20.04 on the other devices I used for this. The last step before testing the network is to install [iPerf](https://iperf.fr/) on all the devices. Since I am working without a direct internet connection on all the devices used, I copied the appropriate [Ubuntu binaries](https://iperf.fr/iperf-download.php#ubuntu) to a flash drive and manually installed in on each device:
+1. Download the [iPerf Ubuntu binaries](https://iperf.fr/iperf-download.php#ubuntu) to a computer which has network connection. I used ``iPerf_3.9.deb`` + ``libiperf0_3.9-1.deb`` + ``libsctp1_1.0.18+dfsg-1.deb``. Copy the files to a flash drive. 
 2. Connect the flash drive to one of the networked computers. Use ``fdisk`` to find the name of the drive, and then mount it:
 ```
 sudo fdisk -l
@@ -192,7 +219,7 @@ Disk identifier: 0x1dee8e35
 Device     Boot Start      End  Sectors  Size Id Type
 /dev/sdb1          63 62656640 62656578 29.9G  7 HPFS/NTFS/exFAT
 ```
-I like creating a USB directory:
+In this case, ``/dev/sdb1`` is the name and location of the partition that needs to be mounted. I like to create a ``/media/USB`` directory to mount USB drives to:
 ```
 sudo mkdir /media/USB
 sudo mount /dev/sdb1 /media/USB
@@ -202,7 +229,7 @@ Make sure these files are in the USB directory:
 ```
 iperf3_3.9-1_amd64.deb   libiperf0_3.9-1_amd64.deb   libsctp1_1.0.18+dfsg-1_amd64.deb
 ```
-3. Once mounted, install the packages. The order of installation matters.
+3. Once mounted, install the packages. This order matters, and the installation may fail if installed in the incorrect order.
 ```
 sudo dpkg -i libsctp1_1.0.18+dfsg-1_amd64.deb
 sudo dpkg -i libiperf0_3.9-1_amd64.deb
@@ -224,16 +251,18 @@ Server or Client:
 ```
 
 ## iPerf & Testing
-To start iPerf and begin testing the network, I SSH'd into all 12 interfaces, each in a different instance of command prompt. 
+To start iPerf and begin testing the network, I SSH'd into all 12 interfaces from my laptop, each in a different instance of command prompt. 
 ```
 ssh username@192.168.2.xxx
 ```
 
-On the server interfaces, I started the iPerf listener with the following:
+On the interfaces I needed to configure as iPerf servers, I started the iPerf listener with the following:
 ```
 iperf3 -s -B 192.168.2.xxx -p 600x
 ```
-> replace 192.168.2.xxx with the appropriate ip for the interface, and increment 600x each time. e.g. ``iperf3 -s -B 192.168.2.111 -p 6000``, ``iperf3 -s -B 192.168.2.112 -p 6001``, etc.
+> Replace ``192.168.2.xxx`` with the appropriate ip for the interface, and increment 600x each time. e.g. ``iperf3 -s -B 192.168.2.111 -p 6000``, ``iperf3 -s -B 192.168.2.112 -p 6001``, etc.
+In this case, ``-s`` indicates that this is a server interface, ``-B`` binds the iPerf instance to the specified IP (this is important since the logic supply has 6 different interfaces which can all be accessed), and ``-p`` indicates the port number. For more information about the available parameters, see the [iPerf documentation](https://iperf.fr/iperf-doc.php#3doc).
+
 You should see the following (replace 6000 with the appropriate port number):
 ```
 -----------------------------------------------------------
@@ -242,8 +271,38 @@ Server listening on 6000
 
 ```
 
-> I tried concatenating commands from a single ssh instance, but found that it didn't work correctly. e.g. ``iperf3 -s -B 192.168.2.111 -p 6000 & iperf3 -s -B 192.168.2.112 -p 6001 ...``
-> In this case, it appears that the entire system was rate-limited to 1G, despite the connections sending and receiving on different IP's. 
+> I tried concatenating commands from a single ssh instance, but found that it didn't work correctly. e.g. ``iperf3 -s -B 192.168.2.111 -p 6000 & iperf3 -s -B 192.168.2.112 -p 6001 ...``. In this case, it appears that the entire system was rate-limited to 1G, despite the connections sending and receiving on different IP's. 
+
+The last step is to start the iPerf client on each of the client interfaces. To do so, use the following command:
+```
+iperf3 -c 192.168.2.xxx -p 600x
+```
+Now, ``-c`` indicates that this is a client, and the following IP address is the location of the server to connect to. Again, ``-p`` indicates the appropriate port number to connect over. Make sure these numbers match each of the server listeners you configured above. The default time for an iPerf test is 10 seconds. To extend this time, add ``-t n`` to the client command, replacing n with the number of seconds the client should run.
+
+Everything is now in place to test the network. Start each client connection and let them all run at the same time. At the end of the test, you should see the results for each client/server pair:
+```
+manager@nuc1:/$ iperf3 -c 192.168.2.111
+Connecting to host 192.168.2.111, port 5201
+[  5] local 192.168.2.125 port 55990 connected to 192.168.2.111 port 5201
+[ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+[  5]   0.00-1.00   sec   112 MBytes   942 Mbits/sec    0    352 KBytes
+[  5]   1.00-2.00   sec   112 MBytes   940 Mbits/sec    0    369 KBytes
+[  5]   2.00-3.00   sec   111 MBytes   929 Mbits/sec    0    369 KBytes
+[  5]   3.00-4.00   sec   112 MBytes   937 Mbits/sec    0    369 KBytes
+[  5]   4.00-5.00   sec   112 MBytes   936 Mbits/sec    0    369 KBytes
+[  5]   5.00-6.00   sec   111 MBytes   930 Mbits/sec    0    369 KBytes
+[  5]   6.00-7.00   sec   112 MBytes   937 Mbits/sec    0    369 KBytes
+[  5]   7.00-8.00   sec   111 MBytes   934 Mbits/sec    0    369 KBytes
+[  5]   8.00-9.00   sec   111 MBytes   933 Mbits/sec    0    369 KBytes
+[  5]   9.00-10.00  sec   111 MBytes   935 Mbits/sec    0    369 KBytes
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bitrate         Retr
+[  5]   0.00-10.00  sec  1.09 GBytes   935 Mbits/sec    0             sender
+[  5]   0.00-10.00  sec  1.09 GBytes   934 Mbits/sec                  receiver
+
+iperf Done.
+```
+For this test, you can see that the bitrate is very close to the 1 Gbit benchmark.
 
 ## Troubleshooting & Workarounds
 ### Test Fiber Connection
@@ -276,7 +335,7 @@ MAC                IP              hostname       valid until         manufactur
 In this case, I can tell that everything is connected to the network. There are six different ``logic`` interfaces, as well as ``nuc0`` through ``nuc3`` and ``slax``, which are the NUC's. 
 
 #### Test DHCP from Windows
-If you are connected to the DHCP server's network on a Windows computer, you can check for connected DHCP servers:
+If you are connected to the DHCP server's network on a Windows computer, you can check for connected DHCP servers through the command prompt:
 1. Open the Command Prompt
 2. Type:
 ```
@@ -288,7 +347,7 @@ ipconfig /all | find /i “DHCP Server”
 ```
 
 ### Rate-limiting
-It seems that most systems are rate-limited to send only 1G, no matter the number of interfaces it has. One solution I first tried was to use only 2 NUC's and multiple ethernet &rarr; USB adapters. While I got 1G speeds when testing a single server/client pair as expected, I was unable to get anything more than that when testing two pairs at the same time. Here is an example of testing both connections at the same time:
+It seems that most systems are rate-limited to send only 1G spread across all interfaces. One initial solution I tried was to use only 2 NUC's and multiple ethernet &rarr; USB adapters. While I got 1G speeds when testing a single server/client pair as expected, I was unable to get anything more than that when testing two pairs at the same time. Here is an example of testing both connections at the same time:
 ```
 Accepted connection from 192.168.2.108, port 36845
 [  5] local 192.168.2.11 port 10000 connected to 192.168.2.108 port 57105
@@ -327,6 +386,7 @@ Accepted connection from 192.168.2.110, port 52271
 [ ID] Interval           Transfer     Bitrate
 [  5]   0.00-10.00  sec   680 MBytes   570 Mbits/sec
 ```
+As you can see, the transfers still only sums to just about 1 Gbit, rather than the 2 Gbit I expected.
 
 The only solution I found to this was to use multiple client systems. The final configuration I used consists of one server system (the logic supply) and six separate client systems (the NUC's). In this setup, everything behaves as expected, with the server system capable of receiving 6G simultaneously. I also tested the reverse, using a single client system (the logic supply) and six servers (the NUC's), but found it was still rate-limited to 1G sending across all interfaces.
 
