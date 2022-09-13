@@ -41,9 +41,26 @@ If you are not using Windows, you can also create an image using the ``dd`` disk
 To begin, power off the Pi you are imaging and remove the microSD card. The laptop I am using has a built-in SD card reader, so I can use a microSD to SD card adapter, but you may need to use a USB extension or adapter to connect the microSD card to your laptop.
 
 ### Write with Rufus
-[Rufus](https://rufus.ie/en/) is a software utility for Windows 7 or later which can be used to format and create bootable removable media drives. It is very small, relatively fast, and free to use.
+[Rufus](https://rufus.ie/en/) is a software utility for Windows 7 or later which can be used to format and create bootable removable media drives. It is very small, relatively fast, and free to use. Now that an image of a Pi is saved to the computer, we can use Rufus to write it to a new microSD card.
+
+Plug a new microSD (not the one used for the original Pi) into the computer and launch Rufus. In the "Device" dropdown at the top of the Rufus window, you should see your SD card reader. Select it. 
+
+In the "Boot Selection" dropdown, choose "Disk or ISO image". Then, click the "SELECT" button to the right of that menu. Navigate to the image that was saved to your computer and select it.
+
+Finally, click the "START" button at the bottom of the window to begin the process of writing the image to the microSD card. You can expect this process to take around 15 minutes if you used a 64 GB microSD card in the original Pi.
+
+Once the image has been written, you can eject the SD card and plug it into a new Raspberry Pi. It should boot up and look the exact same as the original Pi that was imaged.
 
 ## Post-Image Configuration
+After each Pi is cloned and working with the original image, some further configuration has to be done. Each is assigned a different IP address (given by David), as well as different VLAN IP's and tags.
+
+To do this, I simply powered on each Pi, connected it to a keyboard and monitor, and edited as follows:
+```
+sudo nano /etc/dhcpcd.conf
+```
+```
+sudo nano /etc/network/interfaces.d/vlans
+```
 
 ## Deployment
 
