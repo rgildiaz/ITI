@@ -1,0 +1,30 @@
+[Unit]
+Description=acc rflowman agent
+Conflicts=shutdown.target reboot.target halt.target
+After=ryu-manager.service
+Requires=ryu-manager.service
+
+[Service]
+TimeoutStartSec=0
+TimeoutStopSec=30
+Restart=always
+RestartSec=10
+
+ExecStartPre=/usr/local/bin/rflowman \
+	-c localhost \
+	meter \
+	write \
+	-f /etc/scripts/rflowman/exercise_flows.json
+
+ExecStart=/usr/local/bin/rflowman \
+          -c localhost \
+          flow \
+          monitor \
+          -f /etc/scripts/rflowman/exercise_flows.json \
+          -l participant_span \
+          -w 90s
+
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,96 @@
+{
+    "meters":
+        [
+            { "meter_id": 1, "flags":["KBPS", "STATS"],
+                "bands": [
+                    {"type": "DROP", "rate": 1000}
+                    ]
+            },
+            { "meter_id": 2, "flags":["KBPS", "STATS"],
+              "bands": [
+                    {"type": "DROP", "rate": 2000}
+                    ]
+            },            
+            { "meter_id": 3, "flags":["KBPS", "STATS"],
+                "bands": [
+                    {"type": "DROP", "rate": 3000}
+                    ]
+            },
+            { "meter_id": 4, "flags":["KBPS", "STATS"],
+                "bands": [
+                    {"type": "DROP", "rate": 5000}
+                    ]
+            },
+            { "meter_id": 5, "flags":["KBPS", "STATS"],
+                "bands": [
+                    {"type": "DROP", "rate": 7000}
+                    ]
+            },
+            { "meter_id": 6, "flags":["KBPS", "STATS"],
+                "bands": [
+                    {"type": "DROP", "rate": 10000}
+                    ]
+            },
+            { "meter_id": 7, "flags":["KBPS", "STATS"],
+              "bands": [
+                    {"type": "DROP", "rate": 12000}
+                    ]
+            },
+            { "meter_id": 8, "flags":["KBPS", "STATS"],
+              "bands": [
+                    {"type": "DROP", "rate": 15000}
+                    ]
+            },
+            { "meter_id": 9, "flags":["KBPS", "STATS"],
+              "bands": [
+                    {"type": "DROP", "rate": 20000}
+                    ]
+            },
+            { "meter_id": 10, "flags":["KBPS", "STATS"],
+              "bands": [
+                    {"type": "DROP", "rate": 30000}
+                    ]
+            },
+            { "meter_id": 11, "flags":["KBPS", "STATS"],
+              "bands": [
+                    {"type": "DROP", "rate": 50000}
+                    ]
+            },
+            { "meter_id": 12, "flags":["KBPS", "STATS"],
+              "bands": [
+                    {"type": "DROP", "rate": 100000}
+                    ]
+            },
+            { "meter_id": 13, "flags":["PKTPS", "STATS"],
+                "bands": [
+                    {"type": "DROP", "rate": 1000}
+                    ]
+            },
+            { "meter_id": 14, "flags":["PKTPS", "STATS"],
+              "bands": [
+                  {"type": "DROP", "rate": 2000}
+                  ]
+          }
+        ],
+    "all_flows":[
+        {
+        "label": "participant_span",
+        "flows": [
+          {
+            "cookie": 40,
+            "table_id": 100,
+            "priority": 40,
+            "actions": [
+            {"type": "POP_VLAN"},
+            {"type": "OUTPUT","port": "1"},
+            {"type": "OUTPUT","port": "2"},
+            {"type": "OUTPUT","port": "3"},
+            {"type": "OUTPUT","port": "4"}
+            ],
+            "match": {"in_port": 40}
+          }
+        ]
+    
+      }
+]
+}
