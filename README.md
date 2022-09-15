@@ -7,6 +7,6 @@ Each of the files or directories in the ``projects`` directory are self-containe
 - [PXE Boot ShredOS](projects/pxebootShredOS.md) - _July 2022_
 - [Factory Reset Networking Equipment](projects/factory-reset.md) [Incomplete] - _July 2022_
 - [Testing 10G SFP+ Bidirectional Transceivers](projects/bidi-test.md) - _August 2022_
-- [Configure and Clone Raspberry Pi](projects/rpi-setup/rpi-setup.md) - _September 2022_
+- [Configure and Clone Raspberry Pi](projects/rpi-setup/rpi-setup.md) [Incomplete] - _September 2022_
 
 Have a look around and let me know if you spot any typos or errors!
