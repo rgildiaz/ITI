@@ -208,8 +208,8 @@ sudo crontab -e
 */15 * * * * /etc/scripts/rsync-pcap.sh
 ```
 
-#### Closing
-Now that the Pi is setup as much as possible (before doing anything device-specific), it is ready to be imaged and distributed to the other Pi's.
+### Closing
+Now that this basic Pi is setup as much as possible (before doing anything device-specific), it is ready to be imaged and distributed to the other devices.
 
 ## Clone Using Win32DiskImager and Rufus
 ### Image with Win32DiskImager
@@ -234,9 +234,17 @@ Once the image has been written, you can eject the SD card and plug it into a ne
 After each Pi is cloned and working with the original image, some further configuration has to be done. 
 
 ### Set Hostname
+Each Pi is assigned a different hostname. To edit this, edit the following files:
+```
+sudo nano /etc/hostname
+```
 
-## Configure VLAN and IP
-Each Pi is assigned a different IP address (given by David, see [the list of hostnames and IP's](resources/rpi-list.txt)), as well as different VLAN IP's and tags.
+```
+sudo nano /etc/hosts
+```
+
+### Configure VLAN and IP
+Each Pi is also assigned a different IP address (given by David, see [the list of hostnames and IP's](resources/rpi-list.txt)), as well as different VLAN IP's and tags.
 ```
 sudo nano /etc/network/interfaces.d/vlans
 ```
@@ -245,6 +253,23 @@ sudo nano /etc/dhcpcd.conf
 ```
 
 ### Mount USB
+Each Pi also needs a USB mounted to the ``/mnt`` directory for log storage. To start, create a subdirectory to store the data in:
+```
+sudo mkdir /mnt/external
+```
+
+Then, insert and mount the USB:
+```bash
+# find the partition name
+sudo fdisk -l
+sudo mount /dev/sda1 /mnt/external
+```
+
+Finally, create subdirectories of ``external``:
+```
+sudo mkdir /mnt/external/{pcaps,data}
+sudo mkdir /mnt/external/pcaps/pcaps
+```
 
 ## Troubleshooting
 ### Clonezilla
@@ -253,13 +278,13 @@ When deciding how to clone the first Raspberry Pi I setup, I first attempted to 
 I used version 3.0.1-8-amd64. To download it for yourself, visit [the Clonezilla download page](https://clonezilla.org/downloads/download.php?branch=stable), select the correct architecture, change the file type to iso, set the repository to auto, and then click ``Download``. Once the ISO is downloaded, you can use [Rufus](https://rufus.ie/en/) following [the same method outlined above](#write-with-rufus) to write Clonezilla to a USB stick.
 
 ## Equipment & Other Notes
-Included below is a list of equipment used during this process as well as the version numbers of software used.
+Included below is a list of equipment used and software versions.
 
-Hardware:
+### Hardware:
 - 20 [Raspberry Pi 3B+](https://www.raspberrypi.com/products/raspberry-pi-3-model-b-plus/)'s, each installed with a [PoE HAT](https://www.raspberrypi.com/products/poe-hat/)
 - a [Dell Latitude 5590](https://www.dell.com/support/home/en-us/product-support/product/latitude-15-5590-laptop/overview) Laptop running [Windows 10 Enterprise, Version 21H2](https://docs.microsoft.com/en-us/windows/release-health/status-windows-10-21h2) and [Ubuntu Server 22.04.1](https://ubuntu.com/download/server)
 
-Software:
+### Software:
 Name        | Version
 ------------|-----------
 ``vlan``    | 2.0.5
