@@ -10,3 +10,5 @@ Each of the files or directories in the ``projects`` directory are self-containe
 - [Configure and Clone Raspberry Pi](projects/rpi-setup/rpi-setup.md) [Incomplete] - _September 2022_
 
 Have a look around and let me know if you spot any typos or errors!
+
+Also, note that I've included the names of some of my managers here. If you see "David" or "Matthew" anywhere in the documents, they are the full-time staff members I'm working with!
