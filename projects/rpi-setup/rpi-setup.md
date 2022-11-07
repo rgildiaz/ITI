@@ -135,7 +135,7 @@ In our case, see [the list of Pi hostnames and IP's used here](resources/rpi-lis
 ### Edit Common Settings and Configurations
 #### IP
 All the Pi's were configured such that the ``eth0`` interface can be used solely for ``tcpdump`` collection rather than network connectivity. Edit ``/etc/network/interfaces`` to be the following:
-```yaml
+```ini
 auto lo
 iface lo inet loopback
 
@@ -145,11 +145,11 @@ iface eth0 inet manual
 
 #### NTP Time Setup
 All Pi's were also configured with the same NTP settings. This can be configured in ``timesyncd.conf``:
-```
+```bash
 sudo nano /etc/systemd/timesyncd.conf
 ```
 Edit the file as follows:
-```yaml
+```ini
 ...
 [Time]
 NTP=10.4.0.101 10.4.0.102
@@ -201,7 +201,7 @@ Once the scripts are in place, setup a root ``cron`` job to run the ``rsync-pcap
 ```bash
 sudo crontab -e
 ```
-```yaml
+```ini
 # Edit this file to introduce tasks to be run by cron.
 ...
 # m h dom mon dow   command
