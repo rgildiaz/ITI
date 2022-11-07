@@ -2,7 +2,7 @@
 
 Ansible script to verify the Raspberry Pi's used for Liberty Eclipse 2022.
 
-See [what I wrote for this public repository](./verify-w-ansibile.md) for information about my methodology.
+See [what I wrote for this public repository](./verify-w-ansible.md) for information about my methodology.
 
 ## Scope
 This script will:
