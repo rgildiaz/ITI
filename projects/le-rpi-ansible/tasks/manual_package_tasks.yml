@@ -1,0 +1,31 @@
+---
+# rflowman and ryu aren't found by Ansible's builtin package plugin, so they need to be checked manually.
+- name: Check ryu 4.34 is installed
+  block:
+  - name: Get ryu version
+    # expected out:
+    # ryu 4.34
+    command: 'ryu --version'
+    register: ryu_version
+
+  - name: Check output
+    set_fact:
+      not_found_packages: "{{ not_found_packages + [ 'ryu' ] }}"
+    when: ryu_version.stdout.find('ryu 4.34') == -1
+
+- name: Check rflowman is installed
+  block:
+  - name: Get rflowman version
+    # expected out:
+    # version:  7.0.0-0-gdo32db6
+    # date:     2020-10-09T13:33:262
+    command: 'rflowman -c 0 version'
+    register: rflowman_version
+
+  - name: Check output
+    # rflowman isn't installed when "not found" is in the output
+    # expected out (when not found):
+    # bash: rflowman: command not found
+    set_fact:
+      not_found_packages: "{{ not_found_packages + [ 'rflowman' ] }}"
+    when: rflowman_version.stdout.find('not found') != -1

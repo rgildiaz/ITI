@@ -1,0 +1,9 @@
+vlan
+autossh
+tcpdump
+rsync
+picocom
+telegraf
+vim
+tshark
+pip

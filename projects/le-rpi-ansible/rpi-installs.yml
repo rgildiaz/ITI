@@ -1,0 +1,71 @@
+---
+  - name: Verify Raspberry Pi Installs
+    # Checks that the packages listed in ./vars/packages.txt are installed and verifies NTP time setup.
+    # private key specified in ansible.cfg : ~/.ssh/le22_rpi_manager.priv
+    hosts: remote
+    remote_user: manager
+    become: yes
+
+    tasks:
+    - name: Check package installs
+      block:
+      - name: Gather package facts
+        package_facts:
+          manager: auto
+
+      - name: Initialize a list for failed packages
+        # to avoid combing through terminal output, store failures in a list and print them at the end.
+        set_fact:
+          not_found_packages: []
+
+      - name: Check if packages in packages.txt are installed
+        # edit ./vars/packages.txt with appropriate packages and versions in the form of: 'foo=1.0.0'
+        include_tasks: tasks/package_tasks.yml
+        vars:
+          package_name: "{{ item }}"
+        with_items:
+          - "{{ lookup('file', 'vars/packages.txt').split('\n') }}"
+      
+      - name: Check for other packages
+        # tasks to manually check for packages
+        include_tasks: tasks/manual_package_tasks.yml
+
+      - name: Print packages that weren't found
+        debug:
+          msg: "{{ item }}"
+        loop: "{{ not_found_packages }}"
+      tags:
+      - packages
+
+    - name: Check NTP time setup
+      block:
+      - name: Gather system service facts
+        service_facts:
+        register: services_state
+
+      - name: Get NTP time config from /etc/systemd/timesyncd.conf
+        command: 'cat /etc/systemd/timesyncd.conf'
+        register: timesyncd_output
+        failed_when: ('NTP=10.4.0.101 10.4.0.102' not in timesyncd_output.stdout)
+      
+      - name: Check systemd-timesyncd is running
+        debug:
+          msg: 'NTP state: {{ansible_facts.services["systemd-timesyncd.service"].state}}'
+        failed_when: ansible_facts.services["systemd-timesyncd.service"].state != 'running'
+      tags:
+      - ntp
+
+    - name: Check rsync configuration
+      block:
+      - name: Check for /etc/scripts/rsync-pcap.sh
+        stat:
+          path: /etc/scripts/rsync-pcap.sh
+        register: stat_result
+        failed_when: not stat_result.stat.exists
+      
+      - name: Check rsync cronjob
+        command: 'cat /var/spool/cron/crontabs/root'
+        register: cronjob_root
+        failed_when: ('*/15 * * * * /etc/scripts/rsync-pcap.sh' not in cronjob_root.stdout)
+      tags:
+      - rsync

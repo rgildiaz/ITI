@@ -1,0 +1,12 @@
+---
+  - name: Check item is installed
+    # pass if 'item' is installed, fail and rescue otherwise.
+    block:
+      - name: Check {{ item }} is installed
+        package:
+          name: "{{ item }}"
+          state: present 
+        check_mode: true
+    rescue:
+      - set_fact:
+          not_found_packages: "{{ not_found_packages + [ item ] }}"
