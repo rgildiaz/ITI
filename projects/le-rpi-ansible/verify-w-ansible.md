@@ -44,52 +44,50 @@ remote_user: manager
 become: yes
 ```
 
-``hosts: remote`` asks Ansible to use the ``[remote]`` group which is specified in the inventory file (gathered from ``ansible.cfg`` to be ``le-rpi-hosts``). As you might guess, ``remote_user: manager`` and ``become: yes`` ask Ansible to connect to the hosts as the user ``manager`` and to attempt to gain super user access (this is important for some of the later tasks).
+``hosts: remote`` asks Ansible to use the ``[remote]`` group, specified in the inventory file (which was gathered earlier from ``ansible.cfg``). ``remote_user: manager`` and ``become: yes`` ask Ansible to connect to each host as the user ``manager`` and to attempt to ``become`` a super user (this is important for some of the later tasks).
 
 ### The Playbook
-In [``rpi-installs.yml``](./rpi-installs.yml), take a look at the ``tasks:`` block to see the actions that Ansible takes on host systems.
+In [``rpi-installs.yml``](./rpi-installs.yml), the ``tasks:`` block contains all the actions that Ansible takes on host systems.
 
 The main goals of this playbook are to:
 1. Make sure all the necessary packages are installed,
-2. Verify that and NTP time server is setup,
-3. Ensure an rsync script is in place and running, and
+2. Verify that an NTP time server is setup, and
+3. Ensure an rsync script is in place and running.
 
-You might see that I've organized these goals into blocks, so I will go through them one-by-one.
+I've organized these goals into blocks, so I'll go through them one-by-one.
 
 #### Check package installs
-When designing this section of the script, I wanted it to be easy to maintain and manage. I decided that the easiest way to do this would be to iterate over a list of packages which can easily be edited.
+When designing this section of the script, I wanted it to be easy to maintain and manage. The solution I landed on involves pulling a list of packages from an external file ([``vars/packages.txt``](./vars/packages.txt)).
 
-First, in order to work with packages, I chose to use Ansible's builtin [``package``](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/package_module.html) module. The first task in this block is to gather the facts about the packages on the system, which will allow Ansible to see information about them.
+First, we need a way to allow Ansible to check what packages are installed on host systems. The builtin Ansible [``package``](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/package_module.html) module allows for this functionality, and the first task in this block sets this up and gathers the necessary facts.
 
-Next, to store a list of packages which are not installed (which will later be printed), store an empty list in a global variable called ``not_found_packages``.
+Next, to store a list of packages which are not installed (which will later be printed), Ansible stores an empty list in a global variable called ``not_found_packages``.
 
-I found that the easiest way to work with a list of packages would be to use a [loop](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/items_lookup.html) which looks up the contents of ``vars/packages.txt``. In order for this to work cleanly, I used the [``include_tasks``](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/include_tasks_module.html) module, which allows for the execution of tasks which are stored outside the current playbook. In this case, the set of tasks which will be executed for each item in ``packages.txt`` is located at [``tasks/package-tasks.yml``](tasks/package_tasks.yml).
+To iterate over the packages which are listed in [``vars/packages.txt``](./vars/packages.txt), Ansible provides a builtin [loop](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/items_lookup.html) functionality. For this to work cleanly, I used the [``include_tasks``](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/include_tasks_module.html) module, which allows for the execution of tasks which are stored outside the current playbook. In this case, Ansible first pulls the list of packages from ``vars/packages.txt`` before performing the tasks specified at [``tasks/package-tasks.yml``](tasks/package_tasks.yml) for each item.
 
-``package-tasks.yml`` fails if it can't find the package it is given. The failure is caught by the ``rescue: `` block, which adds it to the list of failed packages.
+``package-tasks.yml`` fails if it can't find the package it is given. The failure is caught by the ``rescue: `` block, which adds it to the list of missing packages before the loop continues to the next item.
 
 There are some items which cannot be checked with the ``package`` module. To avoid bloat in the main playbook, tasks which manually check for these are stored in [``tasks/manual_package_tasks.yml``](tasks/manual_package_tasks.yml).
 
-My process for manually checking packages which might not be found is just to call their ``--version`` option and check that the output matches a predefined value (e.g. ``ryu 4.34``)
+In this version of the program, the only packages which need to be checked for manually are ``ryu`` and ``rflowman``. To do this, Ansible executes the package with the ``--version`` option or the ``version`` parameter and checks the stdout against a predefined value.
 
-Once all the packages have been checked, print the list of those which were not found.
+Once all the packages have been checked, Ansible prints the list of those which were not found.
 
 #### Check NTP setup
-To verify that NTP is setup correctly, I decided to check that the ``systemd-timesyncd`` service is running. To do so, I used the builtin Ansible [``service``](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/service_module.html) module. Like the [package tasks](#check-package-installs), this block begins by gathering information about the system services.
+To verify that NTP is setup correctly, Ansible checks that the ``systemd-timesyncd`` service is running. The builtin Ansible [``service``](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/service_module.html) module allows for service related functionality. Like the [package tasks](#check-package-installs), this block begins by gathering information about the system services.
 
-To make sure NTP is setup for the right servers, the script simply ``cat``s the contents of ``/etc/systemd/timesyncd.conf`` to a variable and makes sure the line ``NTP=10.4.0.101 10.4.0.102`` is present. I hardcoded this value since it needs to be set this way for all the systems I was verifying, but this could be refactored as a global variable. 
+To make sure NTP is setup for the right servers, the script ``cat``s the contents of ``/etc/systemd/timesyncd.conf`` to a variable and makes sure the line ``NTP=10.4.0.101 10.4.0.102`` is present. I hardcoded this value since it was the easiest way to do this for my purposes, but this could be refactored as a global variable for more flexibility.
 
-Next, to make sure the NTP service is active, we check that ``systemd-timesyncd.service`` is running.
+Next, to make sure the NTP service is active, Ansible checks that ``systemd-timesyncd.service`` is running using the ``service`` facts which were gathered in the first task of the block.
 
 #### Check rsync configuration
-The last task is to make sure an rsync script is installed and set to run every 15 minutes.
+The last goal is to make sure an rsync script is installed and set to run every 15 minutes.
 
-To make sure the script is installed, I use the builtin [``stat``](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/stat_module.html) module, which can be used to check if a file is present. Since the contents of this file are subject to change, I decided only to check that it is present in a predetermined location (in this case, ``/etc/scripts/rsync-pcap.sh``) rather than checking the contents themselves.
+The builtin [``stat``](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/stat_module.html) module can be used to check if a file is present. Since the contents of this file are subject to change, I decided only to check that it exists in a predetermined location (in this case, ``/etc/scripts/rsync-pcap.sh``) rather than checking the content.
 
 To ensure the script will run every 15 minutes, I again used the "``cat`` to a variable" technique, checking for the line ``*/15 * * * * /etc/scripts/rsync-pcap.sh`` in the file ``/var/spool/cron/crontabs/root``. This is the task for which super user access is necessary, as this location is usually protected. While Ansible does include a builtin [``cron``](https://docs.ansible.com/ansible/latest/collections/ansible/builtin/cron_module.html) module, I found that under my circumstances, this was the simplest solution.
 
 ## For more information...
-I hope this is useful for tracing my methodology and thoughts throughout this process. If you find errors or have suggestions for improvement, I would appreciate any feedback or comments!
-
 For more information about Ansible, be sure to check out the [Ansible documentation website](https://docs.ansible.com/ansible/latest/index.html). 
 
 For more information about Liberty Eclipse, you can take a look at [the summary report from the 2017 version of the exercise](https://www.energy.gov/oe/articles/liberty-eclipse-exercise-summary-report).
