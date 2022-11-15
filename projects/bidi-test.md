@@ -1,14 +1,27 @@
+<div style="
+  height: auto; 
+  width: 100%; 
+  overflow: hidden;
+">
+  <img 
+    src="../img/IMG_4613.jpeg" 
+    style="
+      height: auto;
+      width: auto;
+  " />
+</div>
+
 # Testing 10G SFP+ Bidirectional Transceivers
 
 This page will document the process I used to test a pair of 10G Bidi's using a simple network setup around a pair of Aruba 3810M network switches. For a full list of equipment used, see the last section about [my equipment & other notes](#equipment--other-notes).
 
 #### Contents:
 
-* [Switch Setup](#switch-setup)
-* [Network Architecture & Configuration](#network-architecture--configuration)
-* [iPerf & Testing](#iperf--testing)
-* [Troubleshooting & Workarounds](#troubleshooting--workarounds)
-* [Equipment & Other Notes](#equipment--other-notes)
+- [Switch Setup](#switch-setup)
+- [Network Architecture & Configuration](#network-architecture--configuration)
+- [iPerf & Testing](#iperf--testing)
+- [Troubleshooting & Workarounds](#troubleshooting--workarounds)
+- [Equipment & Other Notes](#equipment--other-notes)
 
 ---
 
@@ -40,12 +53,12 @@ To setup PuTTY for this purpose in Windows 10, follow the steps below:
    4. The name of the port is inside the parentheses at the end of the entry: "USB Serial Device (COM3)" means the port name is "COM3".
 2. Configure PuTTY for connection.
    1. In the menu at the left side of the PuTTY window, select "Serial", located in the "Connection" submenu. Set the following:
-      * Serial line connect to: COM3
-      * Speed (baud): 9600
-      * Data bits: 8
-      * Stop bits: 1
-      * Parity: none
-      * Flow control: XON/XOFF
+      - Serial line connect to: COM3
+      - Speed (baud): 9600
+      - Data bits: 8
+      - Stop bits: 1
+      - Parity: none
+      - Flow control: XON/XOFF
 3. Click the "Open" button at the bottom of the window to launch the terminal window.
 
 > Once the PuTTY terminal window boots, it may appear blank. Pressing RETURN should show the command line prompt, which in my case is `Aruba-3810M-48G-PoEP-1-slot# `. If this appears, you are connected correctly.
@@ -168,7 +181,7 @@ Make sure the following is included in this config file:
 ```
 # make sure to update the ip and mac addresses as appropriate.
 subnet 192.168.2.0 netmask 255.255.255.0 {
-        # I set a range of .106 to .200, as this far exceeds the < 15 devices I plan on testing. 
+        # I set a range of .106 to .200, as this far exceeds the < 15 devices I plan on testing.
         range 192.168.2.106 192.168.2.200;
         option routers 192.168.2.1;
         default-lease-time 3600;
@@ -366,10 +379,13 @@ If you already have a DHCP server setup, simply connect the server to one switch
 If you don't have a DHCP server setup, you can also ping from one switch to the other.
 
 - SSH into one of the switches:
+
 ```
 ssh manager@192.168.2.2
 ```
+
 - Ping from one switch to the other:
+
 ```
 Aruba-3810M# ping 192.168.2.3
 192.168.2.3 is alive, time = 2 ms
@@ -475,12 +491,12 @@ The only solution I found to this was to use multiple client systems. The final 
 
 For this project, I used:
 
-* A [Dell Latitude 5590](https://www.dell.com/support/home/en-us/product-support/product/latitude-15-5590-laptop/docs) running Windows 10 Enterprise.
-* 6 [Intel NUC's](https://ark.intel.com/content/www/us/en/ark/products/95067/intel-nuc-kit-nuc7i5bnh.html), each running [Ubuntu 20.04](https://releases.ubuntu.com/20.04/)
-* 1 [Nuvo 5006-E Logic supply](https://www.neousys-tech.com/en/product/feature/fanless-computer/nuvo-5000)
-* 2 [Aruba 3810M Network Switches](), each equipped with an [Aruba JL083A Expansion Module](https://buy.hpe.com/us/en/options/modules/switch-modules/switch-connectivity-modules/aruba-switch-sfp-modules/aruba-3810m-2930m-4-port-100m-1g-10g-sfp-macsec-module/p/JL083A).
-* 2 [10G SFP+ Bidirectional Transceivers]()
-* 1 [30 meter ST-ST fiber cable]()
-* 2 [ST-ST adapters](https://www.fs.com/products/132211.html)
-* 2 [2 meter ST-LC fiber cables](https://www.fs.com/products/40626.html)
-* 2 [3dB fiber attenuators](https://www.fs.com/products/70008.html) (I didn't end up needing these, but they were available to me)
+- A [Dell Latitude 5590](https://www.dell.com/support/home/en-us/product-support/product/latitude-15-5590-laptop/docs) running Windows 10 Enterprise.
+- 6 [Intel NUC's](https://ark.intel.com/content/www/us/en/ark/products/95067/intel-nuc-kit-nuc7i5bnh.html), each running [Ubuntu 20.04](https://releases.ubuntu.com/20.04/)
+- 1 [Nuvo 5006-E Logic supply](https://www.neousys-tech.com/en/product/feature/fanless-computer/nuvo-5000)
+- 2 [Aruba 3810M Network Switches](), each equipped with an [Aruba JL083A Expansion Module](https://buy.hpe.com/us/en/options/modules/switch-modules/switch-connectivity-modules/aruba-switch-sfp-modules/aruba-3810m-2930m-4-port-100m-1g-10g-sfp-macsec-module/p/JL083A).
+- 2 [10G SFP+ Bidirectional Transceivers]()
+- 1 [30 meter ST-ST fiber cable]()
+- 2 [ST-ST adapters](https://www.fs.com/products/132211.html)
+- 2 [2 meter ST-LC fiber cables](https://www.fs.com/products/40626.html)
+- 2 [3dB fiber attenuators](https://www.fs.com/products/70008.html) (I didn't end up needing these, but they were available to me)
