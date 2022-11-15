@@ -1,6 +1,9 @@
 <figure style="
   height: auto; 
   width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 ">
   <img 
     src="../img/IMG_4613.jpeg"
@@ -8,7 +11,7 @@
       height: auto;
       width: 100%;
   " />
-  <figcaption align="center"><em>my cable management skills are very apparent here :^)</em></figcaption>
+  <figcaption align="center"><em>call me a master of cable management :^)</em></figcaption>
 </figure>
 
 # Testing 10G SFP+ Bidirectional Transceivers
