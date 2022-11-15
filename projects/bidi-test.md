@@ -1,15 +1,15 @@
-<div style="
+<figure style="
   height: auto; 
-  width: 100%; 
-  overflow: hidden;
+  width: auto;
 ">
   <img 
-    src="../img/IMG_4613.jpeg" 
+    src="../img/IMG_4613.jpeg"
     style="
       height: auto;
-      width: auto;
+      width: 100%;
   " />
-</div>
+  <figcaption align="center"><em>my cable management skills are very apparent here :^)</em></figcaption>
+</figure>
 
 # Testing 10G SFP+ Bidirectional Transceivers
 
