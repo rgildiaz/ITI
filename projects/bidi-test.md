@@ -6,7 +6,7 @@
   align-items: center;
 ">
   <img 
-    src="../img/IMG_4613.jpeg"
+    src="../img/bidi-test/IMG_4613.jpeg"
     style="
       height: auto;
       width: 100%;
@@ -370,6 +370,24 @@ iperf Done.
 ```
 
 For this test, you can see that the bitrate is very close to the 1 Gbit benchmark.
+
+---
+
+<figure style="
+  height: auto; 
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+">
+  <img 
+    src="../img/bidi-test/screenshot.png"
+    style="
+      height: auto;
+      width: 100%;
+  " />
+  <figcaption align="center"><em>the state of my desktop during tests.</em></figcaption>
+</figure>
 
 ## Troubleshooting & Workarounds
 
