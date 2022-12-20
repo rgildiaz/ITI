@@ -6,7 +6,7 @@ _How do the different versions of Gravwell compare? How does Gravwell compare to
 
 Gravwell is a data storage and analysis platform designed to compete with Splunk. It is simpler to setup and use, offers node-based pricing (compared to Splunk's usage-based pricing), and is [open source](https://github.com/gravwell/gravwell). It can be self-hosted, and it's designed to be able to [ingest and store any kind of data](#ingest-anything). This document will explore Gravwell's structure and capabilities, the differences between different versions of the software, and what makes it different from alternative solutions.
 
-## TLDR...
+## TLDR
 
 **Gravwell more than delivers enough value as a free and open source data collection and storage platform for small systems; however, it is hampered by its [13.9 GB/day ingest limit](#data-ingest) and an [unpolished UX](#clunky-ui). While the free version offers [features](#gravwell-features--constraints) that similar free software cannot, the paid tiers suffer from [high costs](#comparing-pricing-options) without delivering much more value than competitors.**
 
@@ -25,18 +25,18 @@ Gravwell is a data storage and analysis platform designed to compete with Splunk
 ## Gravwell Components
 
 <figure style="
-  height: auto; 
+  height: auto;
   width: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
 ">
-  <img 
+  <img
     src="../../img/gravwell/gravwell.png"
     style="
       max-height: 400px;
       width: auto;
-  " 
+  "
     alt="Gravwell Data Flows"
     />
 </figure>
@@ -54,8 +54,8 @@ Gravwell's ingesters "gather incoming data, package it into Gravwell entries, an
 
 Ingesters can gather data from any of a few different sources.
 
-- [**Cleartext Backend Target**](#https://documentation.gravwell.io/ingesters/ingesters.html#cleartext-backend-target) - Given the host and port of a Gravwell indexer, the ingester will connect with a cleartext TCP connection (IPv4 or IPv6).
-- [**Encrypted Backend Target**](#https://documentation.gravwell.io/ingesters/ingesters.html#encrypted-backend-target) - Given the host and port of a Gravwell indexer, the ingester will connect via TCP and perform a full TLS handshake/certificate validation.
+- [**Cleartext Backend Target**](https://documentation.gravwell.io/ingesters/ingesters.html#cleartext-backend-target) - Given the host and port of a Gravwell indexer, the ingester will connect with a cleartext TCP connection (IPv4 or IPv6).
+- [**Encrypted Backend Target**](https://documentation.gravwell.io/ingesters/ingesters.html#encrypted-backend-target) - Given the host and port of a Gravwell indexer, the ingester will connect via TCP and perform a full TLS handshake/certificate validation.
 - [**Pipe Backend Target**](https://documentation.gravwell.io/ingesters/ingesters.html#pipe-backend-target) - Connects to a Unix named socket given a full path to that socket.
 
 Ingesters collect "live" data as it is being generated. To migrate data that has already been collected, [the migration documentation](https://documentation.gravwell.io/ingesters/migrate/migrate.html) specifies methods for importing large amount of data. Note, however, that [**any data limits still apply to migrated data**](#data-ingest) (I was unable to migrate all 30 GB of test data I was provided in one day due to the 13.9 GB ingest limit on the [community edition](#1-community-edition)).
@@ -64,7 +64,7 @@ Ingesters collect "live" data as it is being generated. To migrate data that has
 
 Every piece of data that Gravwell ingests is tagged. Tags allow for easier [search](#search) and [query](#analysis), and categorize incoming data. From the user’s point of view, tags are strings such as “syslog”, “pcap-router”, or “default”. Since tags are used for [querying](#search) later, it can be useful to decide on a consistent naming scheme. For example, the tags for five servers might look like this:
 
-```
+```sql
 syslog-http-server1
 syslog-http-server2
 syslog-file-server1
@@ -77,18 +77,18 @@ Since wildcards are allowed in queries, this enables flexible searching. For exa
 ### [Storage](https://documentation.gravwell.io/architecture/architecture.html#indexer-storage-topology)
 
 <figure style="
-  height: auto; 
+  height: auto;
   width: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
 ">
-  <img 
+  <img
     src="../../img/gravwell/gravwell_indexer.png"
     style="
       max-height: 300px;
       width: auto;
-  " 
+  "
     alt="An example architecture of a Gravwell indexer"
     />
 </figure>
@@ -179,18 +179,18 @@ table name temp
 All together, this query results in the following output:
 
 <figure style="
-  height: auto; 
+  height: auto;
   width: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
 ">
-  <img 
+  <img
     src="../../img/gravwell/weather-extract.png"
     style="
       max-height: 400px;
       width: auto;
-  " 
+  "
     alt="An example query result"
     />
 </figure>
@@ -268,7 +268,7 @@ The free community edition of Gravwell has an ingest limit of 13.9 GB/day. While
 
 ### Ingest Anything
 
-Because Gravwell is built as a **schema-on-read** system, it can truly ingest anything. Data is ingested raw. When a search query is made, 
+Because Gravwell is built as a **schema-on-read** system, it can truly ingest anything. Data is ingested raw. When a search query is made, that data is fetched and formatted. While this is great for ingesting anything, it means that Gravwell is very fast on write and very slow on read.
 
 ## Personal Opinions
 
@@ -279,6 +279,7 @@ While the Gravwell documentation is useable, it seems less extensive or polished
 There is also less of a public community user base on forums such as Stack Overflow, making finding answers for specific issues sometimes a little difficult when compared to other, more widely-used platforms.
 
 ### "Ingest Anything"
+
 On the [Gravwell vs Splunk page](https://www.gravwell.io/gravwell-vs-splunk), the makers of Gravwell tout that "[their] platform ingests everything and compromises nothing. Splunk can’t say that." While Gravwell can truly ingest anything, Splunk can ingest nearly everything that would ever be needed for an enterprise logging platform.
 
 ### Intermittent Crashes
@@ -290,58 +291,172 @@ I setup a Gravwell server on an Intel NUC, which I ssh'd into. While this could 
 Gravwell's general UX feels relatively clunky and unpolished to me. See this example while setting up a dashboard.
 
 <figure style="
-  height: auto; 
+  height: auto;
   width: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
 ">
-  <img 
+  <img
     src="../../img/gravwell/new-dashboard.png"
     style="
       max-height: 300px;
       width: auto;
-  " 
+  "
     alt="A new Gravwell dashboard, containing only the option to 'Add a Tile'"
     />
   <figcaption>After creating a dashboard, the user is given the option to add a tile.</figcaption>
 </figure>
 
 <figure style="
-  height: auto; 
+  height: auto;
   width: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
 ">
-  <img 
+  <img
     src="../../img/gravwell/make-tile.png"
     style="
       max-height: 300px;
       width: auto;
-  " 
+  "
     alt="A query for `tag=syslog` in a new tile on a Gravwell dashboard"
     />
   <figcaption>When creating a new tile, the user can enter the query that they would like to visualize.</figcaption>
 </figure>
 
 <figure style="
-  height: auto; 
+  height: auto;
   width: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
 ">
-  <img 
+  <img
     src="../../img/gravwell/query1.png"
     style="
       max-height: 300px;
       width: auto;
-  " 
+  "
     alt="A Gravwell dashboard showing the result of a `tag=syslog` query"
     />
   <figcaption>When creating a new tile, the user can enter the query that they would like to visualize.</figcaption>
 </figure>
+
+> Note: it takes around 2 minutes for the above visualization to finish rendering for a time frame of the last three months.
+
+Now, what if a query need to be edited?
+
+<figure style="
+  height: auto;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+">
+  <img
+    src="../../img/gravwell/edit.png"
+    style="
+      max-height: 300px;
+      width: auto;
+  "
+    alt=""
+    />
+  <figcaption>Which option can I edit the query with?</figcaption>
+</figure>
+
+<figure style="
+  height: auto;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+">
+  <img
+    src="../../img/gravwell/view-query.png"
+    style="
+      max-height: 300px;
+      width: auto;
+  "
+    alt=""
+    />
+  <figcaption>My first guess was "View query". However, the query can only be viewed and copied here (despite there being a "copy query" option in the preceding menu).</figcaption>
+</figure>
+
+<figure style="
+  height: auto;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+">
+  <img
+    src="../../img/gravwell/edit-tile.png"
+    style="
+      max-height: 300px;
+      width: auto;
+  "
+    alt=""
+    />
+  <figcaption>Navigating into the "Edit tile" menu seems promising, judging by the "Query Settings" block.</figcaption>
+</figure>
+
+<figure style="
+  height: auto;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+">
+  <img
+    src="../../img/gravwell/edit-query.png"
+    style="
+      max-height: 300px;
+      width: auto;
+  "
+    alt=""
+    />
+  <figcaption>Selecting the option to edit the query settings, however, still doesn't allow for editing of the query itself. Instead, previous queries can be selected.</figcaption>
+</figure>
+
+<figure style="
+  height: auto;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+">
+  <img
+    src="../../img/gravwell/query-menu.png"
+    style="
+      max-height: 300px;
+      width: auto;
+  "
+    alt=""
+    />
+  <figcaption>The only applicable option in the menu seems to be "New Query".</figcaption>
+</figure>
+
+<figure style="
+  height: auto;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+">
+  <img
+    src="../../img/gravwell/new-query.png"
+    style="
+      max-height: 300px;
+      width: auto;
+  "
+    alt=""
+    />
+  <figcaption>The only solution I found is to copy the current query from one of the previous menus and then create a new one, pasting in the current query and making any necessary edits.</figcaption>
+</figure>
+
+On top of all this, Gravwell's schema-on-read approach means that viewing edits to query results is a slow process, sometimes taking minutes if there is a significant amount of data to load. While this is just one example of a convoluted process, it is indicative of other poorly designed systems within Gravwell.
 
 ### It's FOSS
 
@@ -351,7 +466,7 @@ Having the option of using Gravwell for free is great. As a platform for storing
 
 ### [Splunk](https://www.splunk.com)
 
-Gravwell positions its product in [direct competition with Splunk](https://www.gravwell.io/gravwell-vs-splunk). The  **pricing model** is the biggest difference between the two. Gravwell offers [node-based pricing](#comparing-pricing-options), while [Splunk offers volume- or compute-based pricing](https://www.splunk.com/en_us/products/pricing/enterprise-platform.html). In my opinion, Gravwell's node-based pricing is very inflated, failing to offer enough value to be worth as much as it costs. 
+Gravwell positions its product in [direct competition with Splunk](https://www.gravwell.io/gravwell-vs-splunk). The **pricing model** is the biggest difference between the two. Gravwell offers [node-based pricing](#comparing-pricing-options), while [Splunk offers volume- or compute-based pricing](https://www.splunk.com/en_us/products/pricing/enterprise-platform.html). In my opinion, Gravwell's node-based pricing is very inflated, failing to offer enough value to be worth as much as it costs.
 
 Both Splunk and Gravwell offer managed and self-service options. Splunk has a larger user-base.
 
@@ -367,7 +482,7 @@ While Loki + Grafana has potential, Grafana seems to be best suited to integrate
 
 ## Conclusion
 
-Gravwell does what it promises, and exceeds expectations for a FOSS app. 
+Gravwell does what it promises, and exceeds expectations for a FOSS app.
 
 ## Additional Notes & References
 
