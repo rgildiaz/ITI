@@ -47,6 +47,13 @@ The following is a breakdown of some of the basic features of each of these comp
 
 Gravwell's ingesters "gather incoming data, package it into Gravwell entries, and ship it to Gravwell indexers for storage." Gravwell offers many different [official ingesters](https://docs.gravwell.io/ingesters/ingesters.html#ingesters-list), and the [open-source ingest API](https://github.com/gravwell/gravwell/tree/master/ingest) allows for the creation of your own. Ingesters feed data to indexers, which are responsible for [storage](#storage).
 
+Ingesters can gather data from any of a few different sources.
+- [**Cleartext Backend Target**](#https://documentation.gravwell.io/ingesters/ingesters.html#cleartext-backend-target) - Given the host and port of a Gravwell indexer, the ingester will connect with a cleartext TCP connection (IPv4 or IPv6).
+- [**Encrypted Backend Target**](#https://documentation.gravwell.io/ingesters/ingesters.html#encrypted-backend-target) - Given the host and port of a Gravwell indexer, the ingester will connect via TCP and perform a full TLS handshake/certificate validation.
+- [**Pipe Backend Target**](https://documentation.gravwell.io/ingesters/ingesters.html#pipe-backend-target) - Connects to a Unix named socket given a full path to that socket.
+
+Ingesters collect "live" data as it is being generated. To migrate data that has already been collected, [the migration documentation](https://documentation.gravwell.io/ingesters/migrate/migrate.html) specifies methods for importing large amount of data. Note, however, that [**any data limits still apply to migrated data**](#data-ingest) (I was unable to migrate all 30 GB of test data I was provided in one day due to the 13.9 GB ingest limit on the [community edition](#1-community-edition)).
+
 #### [Tags](https://docs.gravwell.io/ingesters/ingesters.html#tags)
 
 Every piece of data that Gravwell ingests is tagged. Tags allow for easier [search](#search) and [query](#analysis), and categorize incoming data. From the user’s point of view, tags are strings such as “syslog”, “pcap-router”, or “default”. Since tags are used for [querying](#search) later, it can be useful to decide on a consistent naming scheme. For example, the tags for five servers might look like this:

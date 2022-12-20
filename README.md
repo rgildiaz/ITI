@@ -1,8 +1,8 @@
 # ITI Project Documentation
 
-Over the summer and fall of 2022, I have held a position at the [Information Trust Institute](https://iti.illinois.edu/) as a program management and operations support intern. This repository compiles all the documentation I've written at the ITI so far.
+Starting in the summer of 2022, I have held a position at the [Information Trust Institute](https://iti.illinois.edu/) as a program management and operations support intern. This repository compiles all the documentation I've written at the ITI so far.
 
-Each of the files or directories in the ``projects`` directory are self-contained. The projects I have documented so far, in order of completion, are:
+Each of the files or directories in the `projects` directory are self-contained. The projects I have documented so far, in order of completion, are:
 
 - [PXE Boot ShredOS](projects/pxebootShredOS.md) - _June/July 2022_
 - [Factory Reset Networking Equipment](projects/factory-reset.md) [Incomplete] - _July 2022_
