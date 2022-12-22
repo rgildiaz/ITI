@@ -4,11 +4,11 @@ _How do the different versions of Gravwell compare? How does Gravwell compare to
 
 ---
 
-Gravwell is a data storage and analysis platform designed to compete with Splunk. It is simpler to setup and use, offers node-based pricing (compared to Splunk's usage-based pricing), and is [open source](https://github.com/gravwell/gravwell). It can be self-hosted, and it's designed to be able to [ingest and store any kind of data](#ingest-anything). This document will explore Gravwell's structure and capabilities, the differences between different versions of the software, and what makes it different from alternative solutions.
+Gravwell is a platform for data ingestion, storage, and analysis designed to compete with Splunk. It is simple to setup and use, offers node-based pricing (compared to Splunk's usage-based pricing), and is [open source](https://github.com/gravwell/gravwell). It can be self-hosted, and it's designed to be able to [ingest and store any kind of data](#ingest-anything). This document will explore Gravwell's structure and capabilities, the differences between the various versions of the software, and what makes it unique when compared to alternative solutions.
 
 ## TLDR
 
-**Gravwell more than delivers enough value as a free and open source data collection and storage platform for small systems; however, it is hampered by its [13.9 GB/day ingest limit](#data-ingest) and an [unpolished UX](#clunky-ui). While the free version offers [features](#gravwell-features--constraints) that similar free software cannot, the paid tiers suffer from [high costs](#comparing-pricing-options) without delivering much more value than competitors.**
+**Gravwell more than delivers enough value as a free and open source data collection and storage platform for small systems; however, it is restricted by a [13.9 GB/day ingest limit](#data-ingest) and an [unpolished UX](#clunky-ui). While the free version offers [features](#gravwell-features--constraints) that similar free software cannot, the paid tiers suffer from [high costs](#comparing-pricing-options) without delivering much more value than competitors. Due to these factors, it may be worth considering [alternative solutions](#alternative-software) like Grafana.**
 
 ## Contents
 
@@ -52,7 +52,7 @@ The following is a breakdown of some of the basic features of each of these comp
 
 Gravwell's ingesters "gather incoming data, package it into Gravwell entries, and ship it to Gravwell indexers for storage." Gravwell offers many different [official ingesters](https://docs.gravwell.io/ingesters/ingesters.html#ingesters-list), and the [open-source ingest API](https://github.com/gravwell/gravwell/tree/master/ingest) allows for the creation of your own. Ingesters feed data to indexers, which are responsible for [storage](#storage).
 
-Ingesters can gather data from any of a few different sources.
+Ingesters can connect to the backend indexers using a few different methods.
 
 - [**Cleartext Backend Target**](https://documentation.gravwell.io/ingesters/ingesters.html#cleartext-backend-target) - Given the host and port of a Gravwell indexer, the ingester will connect with a cleartext TCP connection (IPv4 or IPv6).
 - [**Encrypted Backend Target**](https://documentation.gravwell.io/ingesters/ingesters.html#encrypted-backend-target) - Given the host and port of a Gravwell indexer, the ingester will connect via TCP and perform a full TLS handshake/certificate validation.
@@ -93,7 +93,7 @@ Since wildcards are allowed in queries, this enables flexible searching. For exa
     />
 </figure>
 
-Storage in Gravwell is handled by [indexers](https://documentation.gravwell.io/configuration/configuration.html#indexer-configuration). As shown above, an indexer can contain many wells, which each contain one or many storage arrays. Using this architecture, each indexer can properly handle requests for multiple [tags](#tags). If a data source requires a different amount of resources than another source that is handled by the same indexer, those resources can be allocated on a per-well basis, allowing for each indexer to maintain the same functionality while increasing performance.
+Storage in Gravwell is handled by [indexers](https://documentation.gravwell.io/configuration/configuration.html#indexer-configuration). As shown above, an indexer can contain many wells, which each contain one or many storage arrays. Using this architecture, each indexer can properly handle requests for multiple [tags](#tags). This means that resources can be allocated on a per-well basis, allowing for each indexer to maintain the same functionality while preventing bottlenecks.
 
 Gravwell stores unstructured data, using a **schema-on-read** approach to [analysis](#analysis) and [search](#search). This is great for importing data quickly, [storing anything](#ingest-anything), or changing the way old data is structured; however, it means that searching and dashboarding is much slower than a more traditional schema-on-write approach.
 
@@ -137,7 +137,7 @@ tag=syslog-http-*,syslog-firewall-*
 
 ##### [Extraction Modules](https://documentation.gravwell.io/search/extractionmodules.html)
 
-Since Gravwell stores data in a structure-on-read format, extraction modules are used to extract ands structure data that is fetched by the tag. In the above example, this would be:
+Since Gravwell stores data in a structure-on-read format, extraction modules are used to extract ands structure data that is fetched by the tag. In the initial example, this would be:
 
 ```sql
 json main.temp name
@@ -147,7 +147,7 @@ Here, the `json` module extracts the JSON weather data that is stored, fetching 
 
 ##### [Processing Modules](https://documentation.gravwell.io/search/processingmodules.html)
 
-In next in the pipeline, the `eval` module filters for the appropriate temperature:
+Next in the pipeline, the `eval` module filters for the appropriate temperature:
 
 ```sql
 eval temp > 20
@@ -170,13 +170,17 @@ tag=reddit,hackernews tag=reddit json Body | tag=hackernews json body as Body | 
 
 ##### [Render Modules](https://documentation.gravwell.io/search/rendermodules.html)
 
-Finally, the in last step in the example pipeline, the `table` module formats an output table with the columns name and temp:
+Finally, during the in last step in the example pipeline, the `table` module formats an output table with the columns name and temp:
 
 ```sql
 table name temp
 ```
 
 All together, this query results in the following output:
+
+```sql
+tag=weather json main.temp name | eval temp > 20 | table name temp
+```
 
 <figure style="
   height: auto;
@@ -195,9 +199,17 @@ All together, this query results in the following output:
     />
 </figure>
 
-### [Analysis]()
+### [Analysis](https://documentation.gravwell.io//gui/dashboards/dashboards.html)
 
-### [Automation]()
+In addition to general searches, Gravwell also allows for the creation of dashboards. Functionally, the process of setting up a dashboard is very similar to Grafana; however, I do have some [complaints about the UX](#clunky-ui).
+
+In contrast to a service like Grafana, Gravwell comes as a single, pre-packaged unit, meaning that disparate data sources don't need to be attached to the dashboard frontend. In my opinion, this makes accessing and visualizing data a little easier.
+
+### [Automation](https://documentation.gravwell.io//automation.html)
+
+Searches can be automated and scheduled, allowing for recurring operations to be run automatically. A common use case for this feature might be the creation of a [scheduled search](https://documentation.gravwell.io//scripting/scheduledsearch.html). Additionally, [scripts can also be scheduled](https://documentation.gravwell.io//scripting/scheduledsearch.html#managing-scheduled-scripts).
+
+In addition to these options for text-based automation setup, Gravwell also offers [Flow](https://documentation.gravwell.io//flows/flows.html), which is a no-code format for developing advanced automations. The interface is very similar to [Microsoft Power Automate](https://powerautomate.microsoft.com/).
 
 ## Comparing Pricing Options
 
@@ -264,7 +276,7 @@ Gravwell also offers three tiers of professional support (pricing for each optio
 
 ### Data Ingest
 
-The free community edition of Gravwell has an ingest limit of 13.9 GB/day. While this should usually be enough for small systems, I ran into issues while trying to migrate existing data. Since I had 30 GB of data total, it was impossible to ingest it all in one day.
+The free community edition of Gravwell has an ingest limit of 13.9 GB/day. While this should usually be enough for maintaining and monitoring small systems, I ran into issues while trying to migrate existing data. Since I had 30 GB of data total, it was impossible to ingest it all in one day.
 
 ### Ingest Anything
 
@@ -274,17 +286,17 @@ Because Gravwell is built as a **schema-on-read** system, it can truly ingest an
 
 ### Mediocre Documentation
 
-While the Gravwell documentation is useable, it seems less extensive or polished than the documentation for comparable services, like Splunk. While a [training manual](./gravwell_training_5.1.2.pdf) is offered, it only contains information relevant to certification and (in my opinion) lacks sufficient instruction for "getting started".
+While the Gravwell documentation is good, it seems less extensive or polished than the documentation for comparable services, like Splunk. While a [training manual](./gravwell_training_5.1.2.pdf) is offered, it only contains information relevant to certification and (in my opinion) lacks sufficient instruction for "getting started".
 
 There is also less of a public community user base on forums such as Stack Overflow, making finding answers for specific issues sometimes a little difficult when compared to other, more widely-used platforms.
 
 ### "Ingest Anything"
 
-On the [Gravwell vs Splunk page](https://www.gravwell.io/gravwell-vs-splunk), the makers of Gravwell tout that "[their] platform ingests everything and compromises nothing. Splunk can’t say that." While Gravwell can truly ingest anything, Splunk can ingest nearly everything that would ever be needed for an enterprise logging platform.
+On the [Gravwell vs Splunk page](https://www.gravwell.io/gravwell-vs-splunk), the makers of Gravwell tout that "[their] platform ingests everything and compromises nothing. Splunk can’t say that." While Gravwell can truly ingest anything, [Splunk can ingest nearly everything](https://docs.splunk.com/Documentation/SplunkCloud/latest/Data/WhatSplunkcanmonitor) that would ever be needed for an enterprise logging platform.
 
 ### Intermittent Crashes
 
-I setup a Gravwell server on an Intel NUC, which I ssh'd into. While this could be a hardware issue, it seems like the connection is sometimes terminated when Gravwell is struggling to load large amounts of logs. For example, while setting up a dashboard for syslogs, the server regularly crashed when attempting to load a visualization for 10M entries. Admittedly, this is a lot of data to display and is perhaps indicative of a bug with my search query, but I thought that it is worth mentioning as this fault could have been handled more elegantly.
+I setup a Gravwell server on an Intel NUC, which I ssh'd into. Sometimes, the connection to the Gravwell server would go down while attempting an operation that had a very high load. For example, while setting up a dashboard for syslogs, the server sometimes crashed when attempting to load a visualization for 10M entries. Admittedly, this is a lot of data to display and is perhaps indicative of user error with my search query, but I thought that it is worth mentioning.
 
 ### Clunky UI
 
@@ -341,10 +353,10 @@ Gravwell's general UX feels relatively clunky and unpolished to me. See this exa
   "
     alt="A Gravwell dashboard showing the result of a `tag=syslog` query"
     />
-  <figcaption>When creating a new tile, the user can enter the query that they would like to visualize.</figcaption>
+  <figcaption>This is simple enough. This is the result of the query.</figcaption>
 </figure>
 
-> Note: it takes around 2 minutes for the above visualization to finish rendering for a time frame of the last three months.
+> Note: it takes around 2 minutes for the above visualization to finish rendering ~10M entries for a time frame of the last three months.
 
 Now, what if a query need to be edited?
 
@@ -363,7 +375,7 @@ Now, what if a query need to be edited?
   "
     alt=""
     />
-  <figcaption>Which option can I edit the query with?</figcaption>
+  <figcaption>Which option will allow the query to be edited?</figcaption>
 </figure>
 
 <figure style="
@@ -460,7 +472,7 @@ On top of all this, Gravwell's schema-on-read approach means that viewing edits 
 
 ### It's FOSS
 
-Having the option of using Gravwell for free is great. As a platform for storing and analyzing log data, Gravwell is about as good as it gets for free. Also, since it is open source, it's relatively easy to add features you need or modify the software to your liking.
+Despite the complaints I have, the option of using Gravwell for free is great. As a platform for storing and analyzing log data, Gravwell is about as good as it gets for free. Also, since it is [open source](https://github.com/gravwell/gravwell), it's relatively easy to add features you need or modify the software to your liking.
 
 ## Alternative Software
 
@@ -478,11 +490,9 @@ Gravwell also requires less dependencies than a Grafana stack. Where Gravwell on
 
 Unfortunately, there is no easy way to integrate Grafana's frontend and Gravwell's backend.
 
-While Loki + Grafana has potential, Grafana seems to be best suited to integrate into a stack that already exists.
-
 ## Conclusion
 
-Gravwell does what it promises, and exceeds expectations for a FOSS app.
+Gravwell does what it promises, and exceeds expectations for being free and open source. However, better alternatives may exist in applications such as Grafana, which have more polished user experiences and no limits on ingest capacity.
 
 ## Additional Notes & References
 
