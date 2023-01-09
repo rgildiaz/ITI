@@ -488,11 +488,12 @@ In my opinion, Grafana handles data visualization and analysis more cleanly than
 
 Gravwell also requires less dependencies than a Grafana stack. Where Gravwell only requires the software to be installed on one machine and ingesters to be installed wherever applicable, Grafana requires the frontend and the logging server to be setup separately in addition to the logging clients to be setup for each separate source.
 
-Unfortunately, there is no easy way to integrate Grafana's frontend and Gravwell's backend.
+### [Graphite](https://graphiteapp.org/)
+Graphite is an open source monitoring tool which can be used in conjunction with a data collection service (like [StatsD](https://github.com/statsd/statsd)) and a visualization platform ([Grafana has a built-in integration](https://grafana.com/docs/grafana/latest/datasources/graphite/)) to achieve the same effect as Gravwell.
 
 ## Conclusion
 
-Gravwell does what it promises, and exceeds expectations for being free and open source. However, better alternatives may exist in applications such as Grafana, which have more polished user experiences and no limits on ingest capacity.
+Gravwell does what it promises, and exceeds expectations for being free and open source. However, better alternatives may exist in applications such as Grafana or Graphite, which have more polished user experiences and no limits on ingest capacity.
 
 ## Additional Notes & References
 
