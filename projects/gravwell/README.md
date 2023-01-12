@@ -170,7 +170,7 @@ tag=reddit,hackernews tag=reddit json Body | tag=hackernews json body as Body | 
 
 ##### [Render Modules](https://documentation.gravwell.io/search/rendermodules.html)
 
-Finally, during the in last step in the example pipeline, the `table` module formats an output table with the columns name and temp:
+Finally, during the in last step in the example pipeline, the `table` module renders an output table containing the columns called ``name`` and ``temp``:
 
 ```sql
 table name temp
