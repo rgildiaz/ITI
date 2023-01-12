@@ -1,2 +1,10 @@
 .vscode/
 .DS_store
+
+# python
+venv/
+__pycache__
+
+# secrets!
+secrets.py
+config.py
