@@ -3,7 +3,7 @@ import config
 
 def main():
     gl = Gitlab(config)
-    print(gl.get_groups())
+    print(gl.get_config())
     print(gl)
 
 
