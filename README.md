@@ -10,5 +10,5 @@ Each of the files or directories in the `projects` directory are self-contained.
 - [Configure and Clone Raspberry Pi](./projects/rpi-setup/rpi-setup.md) - _September 2022_
 - [Verify Installations Remotely with Ansible](./projects/ansible/README.md) - _October 2022_
 - [Gravwell for Data Storage and Analysis](./projects/gravwell/README.md) - _December 2022_
-- [Grafana Loki for Data Storage and Analysis](./projects/grafana-loki/README.md) - _January 2022_
+- [The Grafana Observability Stack](./projects/grafana-loki/README.md) - _January 2022_
 - [Sync GitLab Groups with Active Directory](./projects/gitlab/README.md) - _January/February 2022_
