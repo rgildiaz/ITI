@@ -1,6 +1,6 @@
 # Grafana, Loki, and Promtail for Log Storage and Analysis
 
-_How do Grafana, Loki, and Promtail handle log aggregation and storage, and how does this compare to_ [_Gravwell_](../gravwell/README.md) _and other alternative solutions?_
+_How do Grafana, Loki, and Promtail handle log aggregation and storage, and how does this compare to_ [_Gravwell_](../gravwell/README.md)_?_
 
 <style>
     code {
@@ -10,7 +10,7 @@ _How do Grafana, Loki, and Promtail handle log aggregation and storage, and how 
 
 ---
 
-Developed by [Grafana Labs](https://grafana.com/), the trio of [Grafana](https://grafana.com/grafana/), [Loki](https://grafana.com/logs/), and [Promtail](https://grafana.com/docs/loki/latest/clients/promtail/) form a complete open source monitoring system stack. Being highly configurable, relatively well polished, and constantly developed makes this stack a good option when considering free log aggregation, storage, and analysis tools. [In my opinion](#conclusion), these features make Grafana, Loki, and Promtail a better option than [Gravwell](../gravwell/README.md) in the space of free and open source log storage utilities.
+Developed by [Grafana Labs](https://grafana.com/), the trio of [Grafana](https://grafana.com/grafana/), [Loki](https://grafana.com/logs/), and [Promtail](https://grafana.com/docs/loki/latest/clients/promtail/) form a complete open source monitoring system stack. Being highly configurable, relatively well polished, and constantly developed makes this stack a competitive option when deciding between free log aggregation, storage, and analysis tools. [In my opinion](#conclusion), the features outlined in this document make Grafana, Loki, and Promtail a better option than [Gravwell](../gravwell/README.md) within this space of free and open source log aggregation software.
 
 ## Contents
 
@@ -38,11 +38,11 @@ Grafana Labs' namesake product is _Grafana_, a visualization and dashboarding so
 
 Loki is Grafana Labs' solution to log aggregation. As described in [Loki's documentation](https://grafana.com/docs/loki/latest/fundamentals/overview/), "Loki is a datastore optimized for efficiently holding log data. The efficient indexing of log data distinguishes Loki from other logging systems. **Unlike other logging systems, a Loki index is built from labels, leaving the original log message unindexed**."
 
-Loki also supports its own query language, [LogQL](https://grafana.com/docs/loki/latest/logql/), which is based on [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/). The Loki stack is described by the Grafana Labs team as ["Like Prometheus, but for Logs"](https://grafana.com/go/webinar/intro-to-loki-like-prometheus-but-for-logs).
+Loki also supports its own query language, [LogQL](https://grafana.com/docs/loki/latest/logql/), which is based on [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/). Loki is described by the Grafana Labs team as ["Like Prometheus, but for Logs"](https://grafana.com/go/webinar/intro-to-loki-like-prometheus-but-for-logs).
 
 ### [Promtail](https://grafana.com/docs/loki/latest/clients/promtail/)
 
-Promtail is an [open source](https://github.com/grafana/loki/tree/main/clients/pkg/promtail) agent which ships local logs to a Loki instance. Since it is developed by Grafana Labs, it ships ready to use with Loki, and in conjunction, Grafana. In a production environment, a Promtail agent should be installed on each device that needs to be monitored. For this project, Promtail is installed on the same machine as Grafana and Loki since it will only be used to [migrate logs](#migration-tools) that already exist.
+Promtail is an [open source](https://github.com/grafana/loki/tree/main/clients/pkg/promtail) agent which ships local logs to a Loki instance. Since it is developed by Grafana Labs, it comes ready to use with Loki, and in conjunction, with Grafana. In a production environment, a Promtail agent should be installed on each device that needs to be monitored. For this project, Promtail is installed on the same machine as Grafana and Loki since it will only be used to [migrate logs](#migration-tools) that already exist.
 
 ## Setup - Ubuntu Server
 
@@ -52,7 +52,7 @@ During testing, I setup this Grafana stack on an [Intel NUC](#equipment) running
 
 #### [Grafana](#downloads)
 
-Grafana's installation is relatively straightforward, following [the documentation](https://grafana.com/docs/grafana/latest/setup-grafana/installation/debian/) that Grafana Labs provides. Since the server I set up Grafana on isn't connected to the internet, I downloaded the available [standalone Linux binary](https://grafana.com/grafana/download?edition=oss#:~:text=Standalone%20Linux%20Binaries) to my laptop and copied it to the server:
+Grafana's installation is relatively straightforward when following [the documentation](https://grafana.com/docs/grafana/latest/setup-grafana/installation/debian/) that Grafana Labs provides. Since the server I set up Grafana on isn't connected to the internet, I downloaded the available [standalone Linux binary](https://grafana.com/grafana/download?edition=oss#:~:text=Standalone%20Linux%20Binaries) to my laptop and copied it to the server:
 
 ```bash
 wget https://dl.grafana.com/oss/release/grafana-9.3.2.linux-amd64.tar.gz
@@ -79,7 +79,7 @@ INFO [02-01|17:21:37] Config loaded from logger=settings file=/usr/bin/grafana-9
 ...
 ```
 
-Now, the server is running and the web interface can be accessed on [port 3000](http://localhost:3000).
+Now, the server is running and the web interface can be accessed on [port 3000](http://localhost:3000). From this interface, the Loki data source can be configured.
 
 #### [Loki](#downloads)
 
@@ -327,7 +327,7 @@ Grafana can be configured through the web UI. By default, it runs on [port 3000]
 
 3. Select the Loki data source.
 
-By default, Loki runs on port 3100, so this should be setup and working already. However, it may be necessary to save and test the data source to make sure that it works:
+By default, Loki runs on port 3100, so this should be setup and working already. However, it may be necessary to `save & test` the data source to make sure that it works:
 
 <figure style="
   height: auto;
@@ -348,7 +348,7 @@ By default, Loki runs on port 3100, so this should be setup and working already.
 
 4. Save and test Loki.
 
-Now that Loki has been configured as a data source, the log data it contains can be explored through the explore tab:
+Now that Loki has been configured as a data source, the log data it contains can be queried through the explore tab:
 
 <figure style="
   height: auto;
