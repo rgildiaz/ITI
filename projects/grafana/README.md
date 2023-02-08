@@ -274,13 +274,25 @@ While this works, it feels a little clunky compared to a [dedicated migration to
 
 ### User Experience
 
+From the frontend, I much prefer Grafana's interface to Gravwell's. Gravwell has some [issues with a clunky-to-use UI](../gravwell/README.md#clunky-ui), which Grafana doesn't suffer from. As a robust dashboarding software, Grafana is capable of complex visualization. When [configuring a data source](#grafana-2), Grafana is easy to use and understand.
+
+While I prefer Grafana's web interface to Gravwell's, the backend setup of Gravwell's services was a little more intuitive for me. Since Gravwell is packaged as a single program, there is no need to setup and configure each component of the stack individually. Grafana, on the other hand, requires setup for each component of the stack. 
+
 ### Documentation
+
+Grafana, Loki, and Promtail have fairly comprehensive documentation. While Grafana's stands out as being especially well polished and complete, Loki and Promtail still have much more than enough information to get setup and started. Promtail has the weakest documentation, existing only as [a section of Loki's docs](https://grafana.com/docs/loki/latest/clients/promtail/). However, notes on [configuration](https://grafana.com/docs/loki/latest/clients/promtail/configuration/) and example config files make it useable.
+
+When compared to [Gravwell](https://docs.gravwell.io/), I prefer Grafana's documentation.
 
 ### Active Development
 
+Grafana Labs has a [relatively large development team](https://grafana.com/about/team/). This allows them to actively develop new features and software, and maintain older services. On the other hand, Gravwell's team seems relatively smaller.
+
+For comparison, [Grafana's GitHub repo](https://github.com/grafana/grafana) has nearly 2000 contributors. [Gravwell's repo](https://github.com/gravwell/gravwell) has 10. While GitHub stats aren't the best metric for comparison of success, this large of a difference does give some sense of the scale of each project.
+
 ## Conclusion
 
-Grafana, Loki, and Promtail are highly configurable and generally work well together. However, they can be a little tedious to get setup when compared to Gravwell, and some [functionality issues](#limitations-drawbacks--comparisons-to-gravwell) make it a little less convenient in some regards. That being said, the absence of a [rate limit](../gravwell/README.md#data-ingest), a cleaner [user experience](#user-experience), and [better documentation](#documentation) convince me that this stack is better suited for long-term use than Gravwell.
+Grafana, Loki, and Promtail are highly configurable and designed to work well together. However, they can be a little tedious to get setup when compared to Gravwell, and some [functionality limitations and drawbacks](#limitations-drawbacks--comparisons-to-gravwell) make it a little less convenient in some regards. That being said, the absence of a [rate limit](../gravwell/README.md#data-ingest), a cleaner [user experience](#user-experience), and [better documentation](#documentation) convince me that this stack is better suited for long-term use than Gravwell.
 
 ## Troubleshooting
 
