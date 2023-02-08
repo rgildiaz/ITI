@@ -3,6 +3,7 @@
 _How do Grafana, Loki, and Promtail handle log aggregation and storage, and how does this compare to_ [_Gravwell_](../gravwell/README.md)_?_
 
 <style>
+    /* this doesn't work on GitHub since CSS is disabled :( */
     code {
         white-space : pre-wrap !important;
     }
