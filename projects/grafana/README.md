@@ -1,9 +1,8 @@
-# The Grafana Observability Stack: Grafana, Loki, and Promtail for Data Storage and Analysis
+# Grafana, Loki, and Promtail for Log Storage and Analysis
 
 _How do Grafana, Loki, and Promtail handle log aggregation and storage, and how does this compare to_ [_Gravwell_](../gravwell/README.md) _and other alternative solutions?_
 
 <style>
-    /* code wrapping for the long error message */
     code {
         white-space : pre-wrap !important;
     }
@@ -11,14 +10,14 @@ _How do Grafana, Loki, and Promtail handle log aggregation and storage, and how 
 
 ---
 
-Developed by [Grafana Labs](https://grafana.com/), the trio of [Grafana](https://grafana.com/grafana/), [Loki](https://grafana.com/logs/), and [Promtail](https://grafana.com/docs/loki/latest/clients/promtail/) form a complete open source monitoring system stack.
+Developed by [Grafana Labs](https://grafana.com/), the trio of [Grafana](https://grafana.com/grafana/), [Loki](https://grafana.com/logs/), and [Promtail](https://grafana.com/docs/loki/latest/clients/promtail/) form a complete open source monitoring system stack. Being highly configurable, relatively well polished, and constantly developed makes this stack a good option when considering free log aggregation, storage, and analysis tools. [In my opinion](#conclusion), these features make Grafana, Loki, and Promtail a better option than [Gravwell](../gravwell/README.md) in the space of free and open source log storage utilities.
 
 ## Contents
 
 - [The Observability Stack](#the-observability-stack)
 - [Setup - Ubuntu Server](#setup---ubuntu-server)
-- [User Experience](#user-experience)
-- [Limitations, Drawbacks, & Comparisons to Gravwell](#limitations--drawbacks)
+- [Limitations, Drawbacks, & Comparisons to Gravwell](#limitations-drawbacks--comparisons-to-gravwell)
+- [My Opinions](#my-opinions)
 - [Conclusion](#conclusion)
 - [Troubleshooting](#troubleshooting)
 - [Additional Notes & References](#additional-notes--references)
@@ -39,11 +38,11 @@ Grafana Labs' namesake product is _Grafana_, a visualization and dashboarding so
 
 Loki is Grafana Labs' solution to log aggregation. As described in [Loki's documentation](https://grafana.com/docs/loki/latest/fundamentals/overview/), "Loki is a datastore optimized for efficiently holding log data. The efficient indexing of log data distinguishes Loki from other logging systems. **Unlike other logging systems, a Loki index is built from labels, leaving the original log message unindexed**."
 
-Loki also supports its own query language, [LogQL](https://grafana.com/docs/loki/latest/logql/).
+Loki also supports its own query language, [LogQL](https://grafana.com/docs/loki/latest/logql/), which is based on [PromQL](https://prometheus.io/docs/prometheus/latest/querying/basics/). The Loki stack is described by the Grafana Labs team as ["Like Prometheus, but for Logs"](https://grafana.com/go/webinar/intro-to-loki-like-prometheus-but-for-logs).
 
 ### [Promtail](https://grafana.com/docs/loki/latest/clients/promtail/)
 
-Promtail is an open source agent which ships local logs to a Loki instance. Since it is developed by Grafana Labs, it ships ready to use with Loki, and in conjunction, Grafana.
+Promtail is an open source agent which ships local logs to a Loki instance. Since it is developed by Grafana Labs, it ships ready to use with Loki, and in conjunction, Grafana. In a production environment, a Promtail agent should be installed on each device that needs to be monitored. For this project, Promtail is installed on the same machine as Grafana and Loki since it will only be used to [migrate logs](#migration-tools) that already exist.
 
 ## Setup - Ubuntu Server
 
@@ -228,7 +227,7 @@ scrape_configs:
       - localhost
     labels:
       job: syslogs
-      __path__: /home/shredos/gravwell/syslog-archive/*.gz
+      __path__: /usr/home/shredos/gravwell/syslog-archive/*.gz
   - targets:
       - localhost
     labels:
@@ -236,13 +235,16 @@ scrape_configs:
       __path__: /usr/home/shredos/gravwell/siabmgrCCC/*
 ```
 
-#### Grafana
+#### [Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/)
 
-Grafana can be fully configured through the web UI. By default, it runs on [port 3000](http://localhost:3000).
-
-## User Experience
+Grafana can be configured through the web UI. By default, it runs on [port 3000](http://localhost:3000).
 
 ## Limitations, Drawbacks, & Comparisons to Gravwell
+
+### Log Functionality
+While Loki can be configured in many ways, there are some things that it cannot do out of the box. For example, [LogQL (Loki's query language) cannot parse dates](https://github.com/grafana/loki/issues/3535) right now. While there is a [pull request](https://github.com/grafana/loki/pull/7717) in progress, it has been pending since last November. Gravwell, by comparison, can do this immediately upon log ingestion and without any issues. 
+
+A solution to this would be to change Promtail's configuration, utilizing a regex in the [pipeline](https://grafana.com/docs/loki/latest/clients/promtail/pipelines/) to parse logs (see [this example](https://github.com/grafana/loki/issues/3535#issuecomment-837806593)). While this is functional, it means that any logs that are labeled incorrectly will either be unseen or need to be re-ingested, as well as adding to the ingestion time.
 
 ### Setup Time & Scaling
 
@@ -250,17 +252,47 @@ One of the advantages of Gravwell is its ease of use. Instead of needing to setu
 
 While this may be a benefit in a situation that requires scalability, allowing for separate scaling of each component of the stack as necessary, [Gravwell can also be run as a distributed system](https://docs.gravwell.io/architecture/architecture.html). In addition to each component of the Grafana stack being capable of separate deployment, [Loki can be run in "microservices mode"](https://grafana.com/docs/loki/latest/fundamentals/architecture/deployment-modes/), which allows for each of its components to be deployed as a microservice.
 
+### Migration Tools
+
+Unlike Gravwell, Loki lacks any log migration tools. The suggested solution is to instead point the Promtail agent at a static location where the logs are stored. In the case of this project, that just means adding these lines to the `scrape-config` block of Promtail's config file:
+```
+  - targets:
+      - localhost
+    labels:
+      job: syslogs
+      __path__: /usr/home/shredos/gravwell/syslog-archive/*.gz
+  - targets:
+      - localhost
+    labels:
+      job: siabmgr
+      __path__: /usr/home/shredos/gravwell/siabmgrCCC/*
+```
+
+While this works, it feels a little clunky compared to a [dedicated migration tool](https://documentation.gravwell.io/migrate/migrate.html), and it can lead to [errors when ingesting too much at once](#loki-ingestion-rate-limit).
+
+## My Opinions
+
+### User Experience
+
+### Documentation
+
+### Active Development
+
 ## Conclusion
+
+Grafana, Loki, and Promtail are highly configurable and generally work well together. However, they can be a little tedious to get setup when compared to Gravwell, and some [functionality issues](#limitations-drawbacks--comparisons-to-gravwell) make it a little less convenient in some regards. That being said, the absence of a [rate limit](../gravwell/README.md#data-ingest), a cleaner [user experience](#user-experience), and [better documentation](#documentation) convince me that this stack is better suited for long-term use than Gravwell.
 
 ## Troubleshooting
 
 ### Port 3100 in use
 
-When I first worked to get Grafana, Loki, and Promtail running, I kept running into an issue with Loki. After
+When I first worked to get Grafana, Loki, and Promtail running, I kept running into an issue with Loki. After starting up the Grafana server and Promtail agent, Loki would refuse to start. 
+
+In short, both the Gravwell agent and Loki run on port 3100, so Gravwell must be stopped before Loki will start.
 
 ### Loki Ingestion Rate Limit
 
-Unlike Gravwell, Promtail/Loki don't have a dedicated log migration tool. Instead, the suggested method for migrating large amounts of logs is to point Promtail at their location on your device. While the OSS Grafana stack no daily ingest limit like [Gravwell has](../gravwell/README.md#data-ingest), importing logs can be a little slow by default, leading to a backup of importing files with continuous error messages like this:
+As described [above](#migration-tools), Promtail/Loki don't have a dedicated log migration tool. Instead, the suggested method for migrating large amounts of logs is to point Promtail at their location on your device. While the OSS Grafana stack no daily ingest limit like [Gravwell has](../gravwell/README.md#data-ingest), importing logs can be a little slow by default, leading to a backup of importing files with continuous error messages like this:
 
 ```bash
 level=warn ts=2023-02-01T17:48:53.313036925Z caller=client.go:379 component=client host=localhost:3100 msg="error sending batch, will retry" status=429 error="server returned HTTP status 429 Too Many Requests (429): Ingestion rate limit exceeded for user fake (limit: 4194304 bytes/sec) while attempting to ingest '6510' lines totaling '1048430' bytes, reduce log volume or contact your Loki administrator to see if the limit can be increased"
