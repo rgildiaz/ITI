@@ -16,7 +16,7 @@ class Gitlab:
         self.gl = gitlab.Gitlab(url, private_token=pat)
         self.groups = []
         # fetch all available groups on startup. mutates self.groups
-        self.fetch_all_available_groups()
+        self.sync_groups()
 
     def get_gl(self):
         '''
@@ -30,8 +30,10 @@ class Gitlab:
         '''
         return self.groups
 
+    # remove this?
     def fetch_groups_by_id(self, group_ids: list) -> list:
         '''
+        NOT NEEDED
         Read GitLab groups by Group ID.
 
         @param group_ids a list of the groups to fetch by ID
@@ -61,7 +63,7 @@ class Gitlab:
 
         return groups
 
-    def fetch_all_available_groups(self) -> list:
+    def sync_groups(self) -> list:
         '''
         Fetch all available groups accessible by this Gitlab instance. Call on init. Updates self.groups attribute.
 
@@ -75,11 +77,11 @@ class Gitlab:
             sys.stdout.write(f"Could not fetch groups:", e)
 
         for group in groups_list:
-            self.create_group_entry(group)
+            self._create_group_entry(group)
 
         return groups_list
 
-    def create_group_entry(self, group) -> None:
+    def _create_group_entry(self, group) -> None:
         '''
         Adds a group to self.groups. Replace the group if it already exists.
 
