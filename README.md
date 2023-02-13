@@ -11,4 +11,4 @@ Each of the files or directories in the `projects` directory are self-contained.
 - [Verify Installations Remotely with Ansible](./projects/ansible/README.md) - _October 2022_
 - [Gravwell for Data Storage and Analysis](./projects/gravwell/README.md) - _December 2022_
 - [The Grafana Observability Stack](./projects/grafana/README.md) - _January 2022_
-- [Sync GitLab Groups with Active Directory](./projects/gitlab/README.md) - _January/February 2022_
+- [Sync GitLab Groups with Active Directory](./projects/gitlab-sync/README.md) - _January/February 2022_

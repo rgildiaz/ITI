@@ -1,7 +1,5 @@
 import sys
-import re
 import gitlab
-
 
 class Gitlab:
     '''
@@ -39,9 +37,6 @@ class Gitlab:
         @param group_ids a list of the groups to fetch by ID
         @returns a list of the groups that were fetched
         '''
-        # select leading and trailing whitespace for trimming
-        pattern = re.compile(r"^\s+|\s+$")
-
         # Read by id
         groups = []
         for x, id in enumerate(group_ids):
@@ -102,23 +97,33 @@ class Gitlab:
         for member in group.members.list():
             members.append({
                 'username': member.username,
-                'user_id': member.id,
+                'user_id': member.id
             })
 
         self.groups.append({
             'group_name': group.name,
             'group_id': group.id,
+            'object': group,
             'members': members,
         })
 
-    def create_group(self, name, members=[]):
+    def create_group(self, name, path, members=[]):
         '''
-        Create a GitLab group 
+        Create a GitLab group.
+        Members list should be formatted 
+        Top-level groups are not currently allowed by the GitLab API, so a path to a parent group is required.
+
+        @param name The group name
+        @param path The path to the parent group
+        @param members <optional> The members to include in the group
 
         @returns The created group.
         '''
 
-        self.gl.groups.create({'name': name, })
+
+        group = {'name': name, }
+
+        self.gl.groups.create()
     
     def remove_group(self, group_id):
         '''
