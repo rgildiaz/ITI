@@ -1,6 +1,7 @@
 import sys
 import gitlab
 
+
 class Gitlab:
     '''
     Access a GitLab instance via a personal access token and a URL.
@@ -90,10 +91,11 @@ class Gitlab:
 
         # remove the existing group if it exists.
         for g in self.groups:
-            if group['group_id'] == g['group_id']:
-                sys.stdout.write(f"Duplicate group <id: {group['group_id']}> found. Replacing...")
+            if group.id == g['group_id']:
+                sys.stdout.write(
+                    f"Duplicate group <id: {group.id}> found. Replacing...")
                 self.groups.remove(g)
-                
+
         # add all group members
         members = []
         for member in group.members.list():
@@ -109,42 +111,77 @@ class Gitlab:
             'members': members,
         })
 
-    def create_group(self, name, path, members=[]):
+    def create_group(self, name: str, path: str, parent_id: int, members: list = []):
         '''
         Create a GitLab group.
         Members list should be formatted 
         Top-level groups are not currently allowed by the GitLab API, so a path to a parent group is required.
 
         @param name The group name
-        @param path The path to the parent group
+        @param path The path to the group
+        @param parent_id The parent group's ID
         @param members <optional> The members to include in the group
 
         @returns The created group.
         '''
 
+        group = {'name': name, 'path': path, 'parent_id': parent_id}
 
-        group = {'name': name, }
+        return self.gl.groups.create(group)
 
-        self.gl.groups.create()
-    
-    def remove_group(self, group_id):
+    def remove_group(self, group_obj=None, group_id=None, group_name=None):
         '''
-        Destroy a group by ID
+        Destroy a group by object, ID, or name. Either a `group_obj`, `group_id`, or a `group_name` must be provided. If all are provided, attempt them in order.
 
         @param group_id the ID of the group to remove.
+        @param group_name the name of the group to remove.
         '''
+        if group_obj:
+            print(f"group_obj found: <{group_obj.id}>. Removing...")
+            group_obj.delete()
+        elif group_id:
+            self.gl.groups.delete(group_id)
+        elif group_name:
+            for g in self.groups:
+                if g['name'].strip() == group_name.strip():
+                    self.gl.groups.delete(g['group_id'])
+        else:
+            sys.out.write(
+                f"Group not found. Provided: \ngroup_obj: <{group_obj.id}> \ngroup_id: <{group_id}> \n group_name: <{group_name}>")
 
-    def add_group_members(self, group, members):
+    def add_group_members(self, members: list, group_id: int = None, group_name: str = None):
         '''
         Add members to a group.
 
-        @param group The group ID
-        @param members The members to add
+        @param group_id The group ID
+        @param group_name The group name
+        @param members A list of members to add
         '''
-    
-    def remove_group_members(self, group, members):
+
+        # validate requested members
+
+        group = None
+
+        if group_id:
+            for g in self.groups:
+                if g['group_id'] == group_id:
+                    group = g
+                    break
+        elif group_name:
+            for g in self.groups:
+                if g['name'].strip() == group_name.strip():
+                    group = g
+                    break
+        else:
+            # error
+            pass
+
+        for m in members:
+            group['object'].create({'user_id': m['user_id']})
+
+    def remove_group_members(self, members, group_id=None, group_name=None):
         '''
-        Remove members from a group
+        Remove members from a group.
 
         @param group The group ID
         @param members A list of members to remove. Members that can't be found will be skipped.

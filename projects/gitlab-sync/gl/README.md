@@ -37,7 +37,7 @@ self.groups =
 
 Since execution time and storage capacity aren't (realistically) limiting factors, this format for the `groups` list allows for easy access to name, ID, and members in a human-readable format while still retaining the `object` that can be used to access further information or perform operations on the group.
 
-## Methods
+## Reference
 ### `Gitlab(pat, url="https://gitlab.com")`
 Initialize a Gitlab instance.
 
@@ -60,15 +60,22 @@ Fetch all available groups accessible by this `Gitlab` instance and update this 
 
 This method is called on `__init__` to populate [`self.groups`](#selfgroups) with the available remote groups.
 
-`.sync_groups()` calls [`._create_group_entry()`](#_create_group_entry) to add groups to the [`self.groups`](#selfgroups) list.
-
-### `._create_group_entry(group)`
-Private.
-
-Add a group to the [`self.groups`](#selfgroups) attribute. Replace the group if it already exists in the list.
+### `.create_group(name, path, members=[])`
+Create a remote GitLab group. Top-level groups are not currently allowed by the GitLab API, so a path to a parent group is required.
 
 Parameters:
-- `group` - the `gitlab.Gitlab.group` object to add to [`self.groups`](#selfgroups).
+- `name` - The name of the group.
+- `path` - The path to the parent group.
+- `members` - A list of the members to add to the group upon creation. Defaults to none.
 
-### `.create_group(name, members)`
-Create a group 
+Return: A `gitlab.Gitlab.Group` object representing the created group.
+
+### `.remove_group(group_id=None, group_name=None)`
+Remove a GitLab group by name or id. Either `group_id` or `group_name` must be provided. If both are provided, attempt to remove by `group_id` first, then by `group_name`.
+
+Parameters:
+- `group_id` - The ID of the group to be removed.
+- `group_name` - The name of the group to be removed.
+
+### `.add_group_members(group_id, group_name, members)`
+Add members to a group 
