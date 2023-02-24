@@ -3,6 +3,12 @@ import gitlab
 import config
 import requests
 import json
+import typer
+
+# TODO command line options
+# TODO test/print only mode
+# TODO Error checking
+
 
 # the default access level
 ACCESS_LEVEL = gitlab.const.AccessLevel.DEVELOPER
@@ -16,7 +22,6 @@ gl_all_members = parent_group.members_all.list(get_all=True)    # list of all cu
 sys.out.write(f"GitLab groups found: {[i.name for i in gl_groups]}")
 
 ad_groups = []
-
 # bypass for now, no AD creds
 if len(config.ad_user) > 0:
     # Authenticate with AD (copied from chatgpt)
@@ -50,11 +55,11 @@ def main():
         if not match_found:
             create_group(ad_group)
 
-    # remove groups that are in gl but not ad
-    ad_group_names = [g['displayName'].lower() for g in ad_groups]
-    for gl_group in gl_groups:
-        if gl_group.name.lower() not in ad_group_names:
-            gl_group.remove()
+    # # remove groups that are in gl but not ad
+    # ad_group_names = [g['displayName'].lower() for g in ad_groups]
+    # for gl_group in gl_groups:
+    #     if gl_group.name.lower() not in ad_group_names:
+    #         gl_group.remove()
 
 
 def sync_members(ad_group, gl_group):
@@ -103,11 +108,14 @@ def sync_members(ad_group, gl_group):
 
 def create_group(ad_group):
     '''
-    Create a GitLab group with the members from the given ad_group
+    Create a GitLab group with the members from the given ad_group. Top-level groups cannot be created (as a restriction of the GitLab API), so the parent_group is used.
+
+    @param ad_group the AD group to copy to GitLab
     '''
     gl_group = gl.groups.create({
         'name': ad_group['displayName'],
-        'path': ad_group['displayName']
+        'path': ad_group['displayName'],
+        'parent_group': parent_group.id
     })
 
     # use sync_members to add correct group members
