@@ -40,6 +40,7 @@ $ python3 gladsync -config.file config.yaml
 
 ### Schedule Run
 A `cron` job can be setup to run at a regular interval:
+
 ```bash
 $ crontab -e
 ```
@@ -69,6 +70,7 @@ Below are the main libraries/packages/APIs used. For more specific information a
 
 ### CLI
 The [Typer](https://typer.tiangolo.com/) library allows for easy CLI implementation based Python's built-in type hints. You can see how it is used in [`./gladsync/gladsync.py`](./gladsync/gladsync.py).
+
 
 ### API Access
 
