@@ -4,7 +4,7 @@ import sys
 import os
 import yaml
 
-# Default config details. Overwritten by values in the config file, if they are given.
+# Default config details. Overwritten by values in the config file if they are given.
 defaults = {
     'gl_url': 'https://gitlab.com',
     'gl_pat': '',
@@ -14,14 +14,16 @@ defaults = {
     'access_level': gitlab.const.AccessLevel.DEVELOPER
 }
 
+
 class Config:
-    def __init__(self, config_path: Path, test: bool):
+    def __init__(self, config_path: Path, test: bool, verbose: bool):
         '''
         Parse and validate config data from .yaml config files. (TODO add other formats?)
 
         Args:
             config_path (Path) : the path to the .yaml config file to use.
-            test (bool) : test mode switch (off will modify GitLab).
+            test (bool) : test mode switch (`False` will modify GitLab).
+            verbose (bool) : verbose switch (`True` will print extra information).
         '''
         self.validate_path(config_path)
 
@@ -34,26 +36,57 @@ class Config:
         missing_test_values = []
         for key in defaults.keys():
             try:
-                # Set config file value if one is provided
-                setattr(self, key, config[key])
+                # Will throw error if key is not provided
+                if len(str(config[key])) > 0:
+                    # Set config file value if one is provided
+                    setattr(self, key, config[key])
+                else:
+                    # set as default if empty value is provided
+                    setattr(self, key, defaults[key])
             except KeyError as e:
-                # since AD info doesn't matter in test mode, skip AD info if not found
-                if test and key in ['ad_url', 'ad_user', 'ad_pass']:
+                # since GL info doesn't matter in test mode, skip GL info if not found
+                if test and (key in ['gl_url', 'gl_pat']):
                     missing_test_values.append(key)
                     continue
                 if not defaults[key]:
                     # if no default exists, throw error
                     missing_values.append(key)
                 else:
-                    # set attr to default value as last resort
+                    # set as default value as last resort
                     setattr(self, key, defaults[key])
-        
-        # since ad values were skipped in test mode above, print warning.
-        if test:
-            sys.stdout.write(f"\nWould exit if not in test. Required values not found in {pwd}/{config_path}: {missing_test_values}")
-        if missing_values:
-            sys.exit(f"\nRequired values not found in {pwd}/{config_path}: {missing_values}")
 
+        if verbose:
+            sys.stdout.write(f"\nConfig: {self._get_attrs()}\n")
+
+        # since ad values were skipped in test mode above, print warning.
+        if missing_test_values:
+            sys.stdout.write(
+                f"\nWould exit if not in test. Required values not found in {pwd}/{config_path}: {missing_test_values}")
+        if missing_values:
+            # sys.exit(
+            #     f"\nRequired values not found in {pwd}/{config_path}: {missing_values}")
+            pass
+
+    def _get_attrs(self):
+        '''
+        Safely get all attributes.
+
+        Returns:
+            dict : this object's attributes with sensitive information removed.
+        '''
+        # the attrs to replace in output
+        protected = ['gl_pat', 'ad_pass']
+        attrs = self.__dict__
+
+        for a in protected:
+            try:
+                # replace the value if it exists
+                if attrs[a]:
+                    attrs[a] = '(removed from output)'
+            except:
+                continue
+
+        return attrs
 
     def validate_path(self, path: Path) -> bool:
         '''
@@ -104,7 +137,7 @@ class Config:
                     conf += line
         except Exception:
             sys.exit(f'Could not read config file {config_file}')
-        
+
         try:
             config = yaml.safe_load(conf)
         except Exception as e:
@@ -114,7 +147,7 @@ class Config:
         config['access_level'] = self.set_access(config['access_level'])
 
         return config
-    
+
     def set_access(self, access: str):
         '''
         Set gitlab.const.AccessLevel based on parsed config data.
@@ -140,15 +173,22 @@ class Config:
             'owner': gitlab.const.AccessLevel.OWNER
         }
 
-        try:
-            out = access_levels[access.lower()]
-        except Exception as e:
-            # If access cannot be parsed, set to first element of dict
-            min_access = list(access_levels.items())[0]
-            sys.stdout.write(f"Given access <{access}> not valid. Reverting to minimum level: <{min_access}>")
-            out = min_access[1]  # min_access is a tuple, so need to get second element
-        
+        # If access cannot be parsed, set to first element of dict
+        min_access = list(access_levels.items())[0]
+
+        if access:
+            try:
+                out = access_levels[access.lower()]
+            except Exception as e:
+                sys.stdout.write(
+                    f"Given access <{access}> not valid. Reverting to minimum level: {min_access}")
+                # min_access is a tuple, so need to get second element
+                out = min_access[1]
+        else:
+            out = min_access[1]
+
         return out
+
 
 # testing
 if __name__ == "__main__":
