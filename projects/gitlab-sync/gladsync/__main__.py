@@ -1,3 +1,3 @@
-from gladsync import app
+from main import app
 
 app()
