@@ -1,0 +1,24 @@
+# An example config file for gladsync.
+# Default values are used if no value is provided.
+
+# The URL to your GitLab instance. 
+# Defaults to "https://gitlab.com"
+gl_url: ''
+
+# The personal access token to use when accessing gitlab
+gl_pat: ''
+
+# The URL to your Active Directory instance
+ad_url: ''
+
+# The username to use when accessing Active Directory
+ad_user: ''
+
+# The password to use when accessing Active Directory.
+ad_pass: ''
+
+# The access level to give to each person added to a GitLab group
+# Must be one of: [GUEST, REPORTER, DEVELOPER, MAINTAINER, OWNER]
+# Defaults to DEVELOPER
+access_level: ''
+

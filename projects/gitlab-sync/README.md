@@ -12,24 +12,35 @@ To setup this program, first install the necessary packages:
 $ pip install -r requirements.txt
 ```
 
-Then, create a `config.py` file in the same directory as [`gladsync.py`](./gladsync.py). It should contain configuration information in this format:
-```py
+Then, create a `.yaml` config file in the same format as [`./gladsync/example_config.yaml`](./gladsync/example_config.yaml):
+```yaml
 # The URL of the GitLab instance to access
-gl_url = 'https://gitlab.com'
+gl_url: 'gitlab.com'
 
-# The personal access token used to access the GitLab instance
-gl_pat = 'glpat-1234567890'
+# The personal access token to use when accessing gitlab
+gl_pat: 'glpat-1234567890'
 
-# The URL of the AD instance to access
-ad_url = 'https://path.to.ad'
+# The URL to your Active Directory instance
+ad_url: 'path.to.ad'
 
-# The username and password to use when accessing AD
-ad_user = 'foo'
-ad_pass = 'bar'
+# The username and password to use when accessing Active Directory
+ad_user: 'foo'
+ad_pass: 'bar'
+
+# The access level to give to each person added to a GitLab group
+# Must be one of: [GUEST, REPORTER, DEVELOPER, MAINTAINER, OWNER]
+# Defaults to DEVELOPER
+access_level: 'developer'
+```
+
+Now, GLADSync can be run standalone:
+```bash
+$ python3 gladsync -config.file config.yaml
 ```
 
 ### Schedule Run
-Now, setup a `cron` job to run at an interval you designate:
+A `cron` job can be setup to run at a regular interval:
+
 ```bash
 $ crontab -e
 ```
@@ -38,16 +49,28 @@ $ crontab -e
 # Edit this file to introduce tasks to be run by cron.
 ...
 # m h  dom mon dow   command
-* 4 * * * /usr/local/bin/python3 /home/foo/gladsync.py
+* 4 * * * /usr/local/bin/python3 /home/gladsync -config.file /home/config.yaml
 ```
 
-In this example, the script will run every 4 hours. Change the path to your Python install and the script in the crontab editor as necessary.
+In this example, the script will run every 4 hours. Change the given paths as necessary.
 
 ### Command Line Options
+The `-config.file` option is required. Provide it the path to a config file as described above.
 
-
+```
+-config.file    PATH  The config file to use. [default: None] [required]
+--test          -T    Test mode. Print expected changes but make no modifications. [default: True]
+--verbose       -v    Verbose. Print extra information while running. [default: False]
+--help                Show this message and exit.
+```
 
 ## Methodology
+
+Below are the main libraries/packages/APIs used. For more specific information about the implementation, see the [GLADSync Reference](./gladsync/README.md).
+
+### CLI
+The [Typer](https://typer.tiangolo.com/) library allows for easy CLI implementation based Python's built-in type hints. You can see how it is used in [`./gladsync/gladsync.py`](./gladsync/gladsync.py).
+
 
 ### API Access
 
