@@ -14,24 +14,33 @@ defaults = {
     'access_level': gitlab.const.AccessLevel.DEVELOPER
 }
 
-
 class Config:
-    def __init__(self, config_path: Path):
+    def __init__(self, config_path: Path, test: bool):
         '''
-        Parse and validate config data from .ini config files. (TODO add other formats?)
+        Parse and validate config data from .yaml config files. (TODO add other formats?)
+
+        Args:
+            config_path (Path) : the path to the .yaml config file to use.
+            test (bool) : test mode switch (off will modify GitLab).
         '''
         self.validate_path(config_path)
 
         config = self.parse(config_path)
+        pwd = os.getcwd()
 
         # set this object's attrs to default values unless overwritten
         # errors are collected and thrown after checking all values
         missing_values = []
+        missing_test_values = []
         for key in defaults.keys():
             try:
                 # Set config file value if one is provided
                 setattr(self, key, config[key])
             except KeyError as e:
+                # since AD info doesn't matter in test mode, skip AD info if not found
+                if test and key in ['ad_url', 'ad_user', 'ad_pass']:
+                    missing_test_values.append(key)
+                    continue
                 if not defaults[key]:
                     # if no default exists, throw error
                     missing_values.append(key)
@@ -39,8 +48,11 @@ class Config:
                     # set attr to default value as last resort
                     setattr(self, key, defaults[key])
         
+        # since ad values were skipped in test mode above, print warning.
+        if test:
+            sys.stdout.write(f"\nWould exit if not in test. Required values not found in {pwd}/{config_path}: {missing_test_values}")
         if missing_values:
-            sys.exit(f"Required values not found in '{config_path}': {missing_values}")
+            sys.exit(f"\nRequired values not found in {pwd}/{config_path}: {missing_values}")
 
 
     def validate_path(self, path: Path) -> bool:
@@ -98,9 +110,47 @@ class Config:
         except Exception as e:
             sys.exit(f'Could not load YAML from config file.\n{conf}')
 
+        # set access level to the appropriate gitlab.const
+        config['access_level'] = self.set_access(config['access_level'])
+
         return config
+    
+    def set_access(self, access: str):
+        '''
+        Set gitlab.const.AccessLevel based on parsed config data.
+
+        GUEST: 10
+        REPORTER: 20
+        DEVELOPER: 30
+        MAINTAINER: 40
+        OWNER: 50
+
+        Args:
+            access (str) : a string representing access level.
+        Returns: 
+            gitlab.const.AccessLevel : the access level const corresponding to config
+        '''
+
+        # Access level const specifications
+        access_levels = {
+            'guest': gitlab.const.AccessLevel.GUEST,
+            'reporter': gitlab.const.AccessLevel.REPORTER,
+            'developer': gitlab.const.AccessLevel.DEVELOPER,
+            'maintainer': gitlab.const.AccessLevel.MAINTAINER,
+            'owner': gitlab.const.AccessLevel.OWNER
+        }
+
+        try:
+            out = access_levels[access.lower()]
+        except Exception as e:
+            # If access cannot be parsed, set to first element of dict
+            min_access = list(access_levels.items())[0]
+            sys.stdout.write(f"Given access <{access}> not valid. Reverting to minimum level: <{min_access}>")
+            out = min_access[1]  # min_access is a tuple, so need to get second element
+        
+        return out
 
 # testing
 if __name__ == "__main__":
     print(os.getcwd())
-    Config('test.yaml')
+    Config('test.yaml', True)

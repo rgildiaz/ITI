@@ -48,7 +48,7 @@ def main(
     '''
     Sync AD groups to GitLab!
     '''
-    config = Config(config_path)
+    config = Config(config_path, test)
     print(vars(config))
     # setup(config)
     # sync_groups(test)
