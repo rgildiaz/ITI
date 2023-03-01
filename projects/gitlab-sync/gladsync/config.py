@@ -49,7 +49,7 @@ class Config:
             except KeyError as e:
                 # since GL info doesn't matter in test mode, skip GL info if not found
                 # TODO REMOVE AD KEYS FROM LIST
-                if test and (key in ['gl_url', 'gl_pat', 'gl_root', 'ad_url', 'ad_user', 'ad_pass']): 
+                if test and (key in ['gl_url', 'gl_pat', 'gl_root', 'ad_url', 'ad_user', 'ad_pass']):
                     missing_test_values.append(key)
                     continue
                 if not defaults[key]:
@@ -80,7 +80,8 @@ class Config:
         '''
         # the attrs to replace in output
         protected = ['gl_pat', 'ad_pass']
-        attrs = self.__dict__.copy()    # have to make a copy to avoid modifying attrs.
+        # have to make a copy to avoid modifying attrs.
+        attrs = self.__dict__.copy()
 
         for a in protected:
             try:

@@ -3,10 +3,6 @@ from config import Config
 from pathlib import Path
 import typer
 
-############################
-### THIS IS STILL BROKEN ###
-############################
-
 # The CLI app
 app = typer.Typer(
     # Disable local vars showing in error messages
@@ -38,10 +34,10 @@ def main(
         help="Delete GitLab groups as necessary. If off, print expected changes but make no modifications."
     ),
     skip_ad: bool = typer.Option(
-        False, 
+        False,
         "--skip_ad",
         "-s",
-        help="Skip AD authentication and print GitLab data. This is only here for testing."       
+        help="Skip AD authentication and print GitLab data. This is only here for testing."
     )
 ):
     '''
