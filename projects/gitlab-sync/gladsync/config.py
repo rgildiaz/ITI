@@ -5,6 +5,7 @@ import os
 import yaml
 
 # Default config details. Overwritten by values in the config file if they are given.
+# Since attrs are generated automatically, add more key/value pairs here if more config data needed.
 # Keys without values are required.
 defaults = {
     'gl_url': 'https://gitlab.com',

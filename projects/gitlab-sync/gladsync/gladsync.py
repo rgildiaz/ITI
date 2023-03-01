@@ -4,26 +4,22 @@ import requests
 import json
 from config import Config
 
-# TODO test/print only mode
 # TODO remove skip_ad option
-
-############################
-### THIS IS STILL BROKEN ###
-############################
 
 
 class GladSync:
-    def __init__(self, config: Config, test: bool, verbose: bool, skip_ad: bool):
+    def __init__(self, config: Config, test: bool, verbose: bool, delete: bool, skip_ad: bool):
         '''
         The GitLab Active Directory Sync utility. 
-        Contains all program logic, called by main() in main.py.
+        Contains all program logic, called by main() in ./main.py.
 
         Args:
-            config (Config) : a config.Config object containing parsed config data
+            config (Config) : a config.Config object containing parsed config data.
             test (bool) : Enable/disable test/print-only mode.
             verbose (bool) : Enable/disable verbose logging.
+            delete (bool) : Enable/disable group/member deletion.
         '''
-        # if in test mode, gitlab auth may not be provided so set blank defaults
+        # if in test mode, gitlab auth may not be provided, so set blank defaults
         gl = None
         gl_groups = None
         parent_group = None
@@ -91,92 +87,162 @@ class GladSync:
         # inherited options
         self.test = test
         self.verbose = verbose
+        self.delete = delete
 
         if skip_ad:
             self.test_print()
-
-        # start the main program loop
-        self.sync_groups()
+        else:
+            # start the main program loop
+            self.sync_groups()
 
     def sync_groups(self):
         '''
-        Create, update, or delete GitLab groups to match AD.
-        This is the app's main program loop.
+        Create, update, or delete GitLab groups to match AD. This is the app's main program loop.
+        Deletion is toggled with the `--no-delete` flag, but is on by default.
+        In test mode, 
         '''
         # check that all ad_groups are in gl
         for ad_group in self.ad_groups:
             # compare to gl groups
             ad_group_name = ad_group['displayName'].lower()
 
-            match_found = False
+            # search for a match
+            # skip finding a match if GitLab was never accessed
+            if self.gl:
+                match_found = False
+                for gl_group in self.gl_groups:
+                    if gl_group.name.lower() == ad_group_name:
+                        # sync members if names match
+                        self.sync_members(ad_group, gl_group)
+                        match_found = True
+                        break
+
+                # create a new group if no match is found
+                if not match_found:
+                    self.create_group(ad_group)
+            elif self.test:
+                # this _should_ only execute in test mode, even without the `elif`,
+                # since failing to start self.gl should exit the program. elif there just for safety.
+
+                # since we're in test, run self.create_group() to print info about groups that would be created.
+                for ad_group in self.ad_groups:
+                    self.create_group(ad_group)
+            else:
+                # this should never execute, so throw an error and exit if we get here.
+                sys.exit(
+                    f"\nHmm... not sure how this happened. Could not sync_groups().\nself.gl: <{self.gl}>, self.test: <{self.test}>")
+
+        # Now, groups that are not in AD can be removed from GitLab.
+        ad_group_names = [g['displayName'].lower() for g in self.ad_groups]
+        if self.gl:
             for gl_group in self.gl_groups:
-                if gl_group.name.lower() == ad_group_name:
-                    # check members if names match
-                    self.sync_members(ad_group, gl_group)
-                    match_found = True
-                    break
-
-            # create a new group if no match is found
-            if not match_found:
-                self.create_group(ad_group)
-
-        # # remove groups that are in gl but not ad
-        # ad_group_names = [g['displayName'].lower() for g in ad_groups]
-        # for gl_group in gl_groups:
-        #     if gl_group.name.lower() not in ad_group_names:
-        #         gl_group.remove()
+                if gl_group.name.lower() not in ad_group_names:
+                    if self.test:
+                        sys.stdout.write(
+                            f"\n(test) Group would be removed: <{gl_group.name}, {gl_group.id}>")
+                    else:
+                        if self.delete:
+                            gl_group.remove()
+                        else:
+                            sys.stdout.write(
+                                f"\n(delete) Group would be removed: <{gl_group.name}, {gl_group.id}>")
+        elif self.test:
+            # same as the above block, this should only execute when in test and gl could not be accessed.
+            sys.stdout.write(
+                f"\n(test) No self.gl instance found. Could not remove groups.")
+        else:
+            # again, this should never execute
+            sys.exit(
+                f"\nHmm... not sure how this happened. Could not remove groups.\nself.gl: <{self.gl}>, self.test: <{self.test}>")
 
     def sync_members(self, ad_group, gl_group):
         '''
         Sync the members between an AD and GL group. 
         Read AD group members. Add and remove members from the gl_group to match.
+        If in test mode, instead print members that would be added or removed.
 
         Args:
             ad_group : a JSON object representing the AD group.
             gl_group : a gitlab.Gitlab.Group object.
-            config (Config) : a config.Config object containing parsed config data.
-            test (bool) : Enable/disable test (print only) mode.
         '''
-        config = self.config
+        # get group members
+        try:
+            ad_members_response = self.session.get(
+                self.config.ad_url + '/api/groups/' + ad_group['id'] + '/members')
+        except Exception as e:
+            sys.stdout.write(
+                f"\nAD group <{ad_group['displayName']}, {ad_group['id']}> members could not be fetched. {e}")
+            return
 
-        ad_members_response = self.s.get(
-            config.ad_url + '/api/groups/' + ad_group['id'] + '/members')
-        ad_members = json.loads(ad_members_response.text)['value']
-        # get member names list for use later
+        # load member data from json
+        try:
+            ad_members = json.loads(ad_members_response.text)['value']
+        except Exception as e:
+            sys.stdout.write(
+                f"\nAD group <{ad_group['displayName']}, {ad_group['id']}> members could not be loaded from json. {e}")
+            if self.verbose:
+                sys.stdout.write(f"\n\tJSON: {ad_members_response.text}")
+
+        # remove gl_group_members that are not in ad_group
         ad_member_names = [m['displayName'].lower() for m in ad_members]
-
-        gl_members = gl_group.members.list()
-
-        # remove gl_members that are not in ad_group
-        for gl_member in gl_members:
+        gl_group_members = gl_group.members.list()
+        for gl_member in gl_group_members:
             # check display names against each other (not username)
             if gl_member.name.lower() not in ad_member_names:
-                gl_member.delete()
-                gl_members.remove(gl_member)    # gl_members is the local list
+                # gl_group_members is the local list
+                gl_group_members.remove(gl_member)
+                if self.test:
+                    sys.stdout.write(
+                        f"\n(test) GitLab group <{gl_group.name}, {gl_group.id}> member <{gl_member.name}, {gl_member.id}> would be deleted.")
+                else:
+                    if self.delete:
+                        gl_member.delete()
+                    else:
+                        sys.stdout.write(
+                            f"\n(delete) GitLab group <{gl_group.name}, {gl_group.id}> member <{gl_member.name}, {gl_member.id}> would be deleted.")
 
         # add members that are in the ad_group but not gitlab
-        gl_member_names = [m.name.lower() for m in gl_members]
+        gl_member_names = [m.name.lower() for m in gl_group_members]
         gl_all_members = self.parent_group.members_all.list(get_all=True)
         for ad_member in ad_members:
+            # for each member, check if they are in the gl group already
             ad_name = ad_member['displayName'].lower()
             if ad_name not in gl_member_names:
                 # add user to group if they already have an account that exists in one of the subgroups
                 match_found = False
                 for gl_mem in gl_all_members:
                     if ad_name == gl_mem.name.lower():
-                        gl_group.members.create({
+                        # if a match is found, add the member to the gitlab group
+                        create_member = {
                             'user_id': gl_mem.user_id,
-                            'access_level': config.access_level
-                        })
-                        match_found = True
-                        break
+                            'access_level': self.config.access_level
+                        }
+                        if self.test:
+                            sys.stdout.write(
+                                f"\n(test) Member {create_member} would be added to GitLab group <{gl_group.name}, {gl_group.id}>.")
+                        else:
+                            try:
+                                gl_group.members.create(create_member)
+                            except Exception as e:
+                                sys.stdout.write(
+                                    f"\nMember {create_member} could not be added to GitLab group <{gl_group.name}, {gl_group.id}>. {e}")
+                            match_found = True
+                            break
 
                 # if no match is found, send invite email based on the info in AD.
                 if not match_found:
-                    gl_group.invitations.update(
-                        ad_member['mail'],
-                        {'access_level': self.config.access_level}
-                    )
+                    if self.test:
+                        sys.stdout.write(
+                            f"\n(test) Invite email would be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>.")
+                    else:
+                        try:
+                            gl_group.invitations.update(
+                                ad_member['mail'],
+                                {'access_level': self.config.access_level}
+                            )
+                        except Exception as e:
+                            sys.stdout.write(
+                                f"\nInvite email could not be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>. {e}")
 
     def create_group(self, ad_group):
         '''
@@ -184,23 +250,29 @@ class GladSync:
 
         @param ad_group the AD group to copy to GitLab
         '''
+        parent_group = self.parent_group.id if self.parent_group else "<No gl_root Group>"
+
         gl_group = {
             'name': ad_group['displayName'],
             'path': ad_group['displayName'],
-            'parent_group': self.parent_group.id
+            'parent_group': parent_group
         }
-        
+
         if self.test:
             sys.stdout.write(f"\n(test) Would create group: {gl_group}")
         else:
-            gl_group = self.gl.groups.create(gl_group)
+            try:
+                gl_group = self.gl.groups.create(gl_group)
+            except Exception as e:
+                sys.exit(
+                    f"\nGitLab group {gl_group} could not be created. {e}")
 
         # use sync_members to add correct group members
         self.sync_members(ad_group, gl_group)
 
     def test_print(self):
         '''
-        REMOVE LATER
+        REMOVE LATER, only called when skip_ad is true
         check gitlab for all groups and members. Print all.
         '''
         groups = self.gl_groups
