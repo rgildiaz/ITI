@@ -5,9 +5,11 @@ import os
 import yaml
 
 # Default config details. Overwritten by values in the config file if they are given.
+# Keys without values are required.
 defaults = {
     'gl_url': 'https://gitlab.com',
     'gl_pat': '',
+    'gl_root': '',
     'ad_url': '',
     'ad_user': '',
     'ad_pass': '',
@@ -45,7 +47,8 @@ class Config:
                     setattr(self, key, defaults[key])
             except KeyError as e:
                 # since GL info doesn't matter in test mode, skip GL info if not found
-                if test and (key in ['gl_url', 'gl_pat']):
+                # TODO REMOVE AD KEYS FROM LIST
+                if test and (key in ['gl_url', 'gl_pat', 'gl_root', 'ad_url', 'ad_user', 'ad_pass']): 
                     missing_test_values.append(key)
                     continue
                 if not defaults[key]:
@@ -58,13 +61,13 @@ class Config:
         if verbose:
             sys.stdout.write(f"\nConfig: {self._get_attrs()}\n")
 
-        # since ad values were skipped in test mode above, print warning.
+        # since gitlab values were skipped in test mode above, print warning.
         if missing_test_values:
             sys.stdout.write(
-                f"\nWould exit if not in test. Required values not found in {pwd}/{config_path}: {missing_test_values}")
+                f"\n(test) Required values not found in {pwd}/{config_path}: {missing_test_values}\n")
         if missing_values:
-            # sys.exit(
-            #     f"\nRequired values not found in {pwd}/{config_path}: {missing_values}")
+            sys.exit(
+                f"\nRequired values not found in {pwd}/{config_path}: {missing_values}")
             pass
 
     def _get_attrs(self):
@@ -76,7 +79,7 @@ class Config:
         '''
         # the attrs to replace in output
         protected = ['gl_pat', 'ad_pass']
-        attrs = self.__dict__
+        attrs = self.__dict__.copy()    # have to make a copy to avoid modifying attrs.
 
         for a in protected:
             try:

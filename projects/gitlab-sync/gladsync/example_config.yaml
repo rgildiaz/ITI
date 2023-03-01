@@ -5,16 +5,25 @@
 # Defaults to "https://gitlab.com"
 gl_url: ''
 
-# The personal access token to use when accessing gitlab
+# The personal access token to use when accessing GitLab
+# REQUIRED
 gl_pat: ''
 
+# The ID of the group to create all new synced groups under
+# The GitLab API disallows creation of top-level groups
+# REQUIRED
+gl_root: ''
+
 # The URL to your Active Directory instance
+# REQUIRED
 ad_url: ''
 
 # The username to use when accessing Active Directory
+# REQUIRED
 ad_user: ''
 
 # The password to use when accessing Active Directory.
+# REQUIRED
 ad_pass: ''
 
 # The access level to give to each person added to a GitLab group

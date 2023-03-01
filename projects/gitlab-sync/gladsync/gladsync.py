@@ -5,52 +5,104 @@ import json
 from config import Config
 
 # TODO test/print only mode
+# TODO remove skip_ad option
 
 ############################
 ### THIS IS STILL BROKEN ###
 ############################
 
+
 class GladSync:
-    def __init__(self, config : Config, test: bool, verbose: bool):
+    def __init__(self, config: Config, test: bool, verbose: bool, skip_ad: bool):
         '''
         The GitLab Active Directory Sync utility. 
-        Contains all program logic, called by main() in CLI.
+        Contains all program logic, called by main() in main.py.
 
         Args:
             config (Config) : a config.Config object containing parsed config data
             test (bool) : Enable/disable test/print-only mode.
             verbose (bool) : Enable/disable verbose logging.
         '''
+        # if in test mode, gitlab auth may not be provided so set blank defaults
+        gl = None
+        gl_groups = None
+        parent_group = None
+
+        # create the Gitlab object
         try:
-            gl = gitlab.Gitlab(config.gl_url, config.gl_pat)
+            gl = gitlab.Gitlab(url=str(config.gl_url),
+                               private_token=str(config.gl_pat))
         except Exception as e:
-            sys.exit(f"\nGitLab instance cannot be accessed. Given: \n\tgl_url: {config.gl_url}\n\tgl_pat: {config.gl_pat}")
+            if test:
+                # warn if in test mode
+                sys.stdout.write(
+                    f"\n(test) GitLab instance cannot be accessed. {e}")
+            else:
+                sys.exit(
+                    f"\nGitLab instance cannot be accessed. Given: \n\tgl_url: {config.gl_url}\n\tgl_pat: {config.gl_pat}")
 
-        gl_groups = gl.groups.list()
-        # GitLab API only allows for edits in sub-groups, so a parent group needs to be given
-        # set first group as parent for now
-        parent_group = gl_groups[0]
-        # remove the parent group from this list to prevent accidental removal
-        gl_groups = gl_groups.remove(parent_group)
+        # fetch all groups
+        try:
+            gl_groups = gl.groups.list()
+        except Exception as e:
+            if test:
+                # warn if in test
+                sys.stdout.write(
+                    f"\n(test) Cannot fetch groups. GitLab Authentication Error: {e}")
+            else:
+                sys.exit(
+                    f"\nCannot fetch groups. GitLab Authentication Error: {e}")
 
-        # a session is required for AD API
-        s = requests.Session()
-        s.auth = (config.ad_user, config.ad_pass)
+        # fetch parent group
+        try:
+            # GitLab API only allows for edits in sub-groups, so a parent group needs to be given
+            parent_group = gl.groups.get(id=config.gl_root)
+        except Exception as e:
+            if test:
+                # warn if in test
+                sys.stdout.write(
+                    f"\n(test) Root group could not be fetched. {e}")
+            else:
+                sys.exit(
+                    f"\nRoot group {config.gl_root} could not be fetched. {e}")
 
-        ad_groups_response = s.get(config.ad_url + '/api/groups')
-        ad_groups = json.loads(ad_groups_response.text)['value']
+        if not skip_ad:
+            # Create AD session and fetch groups
+            try:
+                s = requests.Session()
+                s.auth = (config.ad_user, config.ad_pass)
+            except Exception as e:
+                sys.exit(f"\nAD Session could not be started. {e}")
 
+            try:
+                ad_groups_response = s.get(config.ad_url + '/api/groups')
+                ad_groups = json.loads(ad_groups_response.text)['value']
+            except Exception as e:
+                sys.exit(f"\nAD groups could not be fetched. {e}")
+
+            self.session = s
+            self.ad_groups = ad_groups
+
+        # gl, gl_groups, parent_group will be None if in test AND gl auth not provided in config/not working.
         self.gl = gl
         self.gl_groups = gl_groups
         self.parent_group = parent_group
-        self.session = s
-        self.ad_groups = ad_groups
+
+        # inherited options
         self.test = test
+        self.verbose = verbose
+
+        if skip_ad:
+            self.test_print()
 
         # start the main program loop
         self.sync_groups()
-    
+
     def sync_groups(self):
+        '''
+        Create, update, or delete GitLab groups to match AD.
+        This is the app's main program loop.
+        '''
         # check that all ad_groups are in gl
         for ad_group in self.ad_groups:
             # compare to gl groups
@@ -126,20 +178,32 @@ class GladSync:
                         {'access_level': self.config.access_level}
                     )
 
-
     def create_group(self, ad_group):
         '''
         Create a GitLab group with the members from the given ad_group. Top-level groups cannot be created (as a restriction of the GitLab API), so the parent_group is used.
 
         @param ad_group the AD group to copy to GitLab
         '''
-        gl_group = self.gl.groups.create({
+        gl_group = {
             'name': ad_group['displayName'],
             'path': ad_group['displayName'],
             'parent_group': self.parent_group.id
-        })
+        }
+        
+        if self.test:
+            sys.stdout.write(f"\n(test) Would create group: {gl_group}")
+        else:
+            gl_group = self.gl.groups.create(gl_group)
 
         # use sync_members to add correct group members
         self.sync_members(ad_group, gl_group)
 
-
+    def test_print(self):
+        '''
+        REMOVE LATER
+        check gitlab for all groups and members. Print all.
+        '''
+        groups = self.gl_groups
+        members = self.parent_group.members_all.list(get_all=True)
+        sys.exit(
+            f"\nParent: {self.parent_group}\n\nGroups: {groups}\n\nMembers: {members}")

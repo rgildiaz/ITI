@@ -32,6 +32,18 @@ def main(
         "--verbose",
         "-v",
         help="Verbose. Print extra information while running."
+    ),
+    delete: bool = typer.Option(
+        True,
+        "--delete",
+        "-d",
+        help="Delete GitLab groups as necessary. If off, print expected changes but make no modifications."
+    ),
+    skip_ad: bool = typer.Option(
+        False, 
+        "--skip_ad",
+        "-s",
+        help="Skip AD authentication and print GitLab data. This is only here for testing."       
     )
 ):
     '''
@@ -41,7 +53,7 @@ def main(
     '''
     config = Config(config_path, test, verbose)
     # all program logic is contained in the GladSync object
-    GladSync(config, test, verbose)
+    GladSync(config, test, verbose, skip_ad, delete)
 
 
 if __name__ == "__main__":

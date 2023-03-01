@@ -20,6 +20,10 @@ gl_url: 'gitlab.com'
 # The personal access token to use when accessing gitlab
 gl_pat: 'glpat-1234567890'
 
+# The ID of the group to create all new synced groups under
+# The GitLab API disallows the creation of top-level groups
+gl_root: '64497189'
+
 # The URL to your Active Directory instance
 ad_url: 'path.to.ad'
 

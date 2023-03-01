@@ -1,0 +1,12 @@
+.vscode/
+.DS_store
+
+# python
+venv/
+__pycache__
+
+# secrets!
+secrets.py
+
+# the test config file (contains secrets!)
+test.yaml
