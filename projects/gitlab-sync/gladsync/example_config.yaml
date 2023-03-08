@@ -31,3 +31,6 @@ ad_pass: ''
 # Defaults to DEVELOPER
 access_level: ''
 
+# The log file to write to.
+# If no path is given, then print to standard out.
+log_file: ''

@@ -3,8 +3,11 @@ import gitlab
 import requests
 import json
 from config import Config
+import logging
 
 # TODO remove skip_ad option
+# TODO log file config or std out
+#   date time/program/error
 
 
 class GladSync:
@@ -19,6 +22,9 @@ class GladSync:
             verbose (bool) : Enable/disable verbose logging.
             delete (bool) : Enable/disable group/member deletion.
         '''
+        # root logger should already be setup from config.
+        self.log = logging.getLogger()
+
         # if in test mode, gitlab auth may not be provided, so set blank defaults
         gl = None
         gl_groups = None
@@ -31,11 +37,12 @@ class GladSync:
         except Exception as e:
             if test:
                 # warn if in test mode
-                sys.stdout.write(
-                    f"\n(test) GitLab instance cannot be accessed. {e}")
+                self.log.warning(
+                    f"(test) GitLab instance cannot be accessed. {e}")
             else:
-                sys.exit(
-                    f"\nGitLab instance cannot be accessed. Given: \n\tgl_url: {config.gl_url}\n\tgl_pat: {config.gl_pat}")
+                self.log.error(
+                    f"GitLab instance cannot be accessed. Given: \n\tgl_url: {config.gl_url}\n\tgl_pat: {config.gl_pat}")
+                sys.exit()
 
         # fetch all groups
         try:
@@ -43,11 +50,12 @@ class GladSync:
         except Exception as e:
             if test:
                 # warn if in test
-                sys.stdout.write(
-                    f"\n(test) Cannot fetch groups. GitLab Authentication Error: {e}")
+                self.log.warning(
+                    f"(test) Cannot fetch groups. GitLab Authentication Error: {e}")
             else:
-                sys.exit(
-                    f"\nCannot fetch groups. GitLab Authentication Error: {e}")
+                self.log.error(
+                    f"Cannot fetch groups. GitLab Authentication Error: {e}")
+                sys.exit()
 
         # fetch parent group
         try:
@@ -56,11 +64,12 @@ class GladSync:
         except Exception as e:
             if test:
                 # warn if in test
-                sys.stdout.write(
-                    f"\n(test) Root group could not be fetched. {e}")
+                self.log.warning(
+                    f"(test) Root group could not be fetched. {e}")
             else:
-                sys.exit(
-                    f"\nRoot group {config.gl_root} could not be fetched. {e}")
+                self.log.error(
+                    f"Root group {config.gl_root} could not be fetched. {e}")
+                sys.exit()
 
         if not skip_ad:
             # Create AD session and fetch groups
@@ -68,13 +77,15 @@ class GladSync:
                 s = requests.Session()
                 s.auth = (config.ad_user, config.ad_pass)
             except Exception as e:
-                sys.exit(f"\nAD Session could not be started. {e}")
+                self.log.error(f"AD Session could not be started. {e}")
+                sys.exit()
 
             try:
                 ad_groups_response = s.get(config.ad_url + '/api/groups')
                 ad_groups = json.loads(ad_groups_response.text)['value']
             except Exception as e:
-                sys.exit(f"\nAD groups could not be fetched. {e}")
+                self.log.error(f"AD groups could not be fetched. {e}")
+                sys.exit()
 
             self.session = s
             self.ad_groups = ad_groups
@@ -129,8 +140,9 @@ class GladSync:
                     self.create_group(ad_group)
             else:
                 # this should never execute, so throw an error and exit if we get here.
-                sys.exit(
-                    f"\nHmm... not sure how this happened. Could not sync_groups().\nself.gl: <{self.gl}>, self.test: <{self.test}>")
+                self.log.error(
+                    f"Hmm... not sure how this happened. Could not sync_groups().\nself.gl: <{self.gl}>, self.test: <{self.test}>")
+                sys.exit()
 
         # Now, groups that are not in AD can be removed from GitLab.
         ad_group_names = [g['displayName'].lower() for g in self.ad_groups]
@@ -138,22 +150,23 @@ class GladSync:
             for gl_group in self.gl_groups:
                 if gl_group.name.lower() not in ad_group_names:
                     if self.test:
-                        sys.stdout.write(
-                            f"\n(test) Group would be removed: <{gl_group.name}, {gl_group.id}>")
+                        self.log.info(
+                            f"(test) Group would be removed: <{gl_group.name}, {gl_group.id}>")
                     else:
                         if self.delete:
                             gl_group.remove()
                         else:
-                            sys.stdout.write(
-                                f"\n(delete) Group would be removed: <{gl_group.name}, {gl_group.id}>")
+                            self.log.info(
+                                f"(delete) Group would be removed: <{gl_group.name}, {gl_group.id}>")
         elif self.test:
             # same as the above block, this should only execute when in test and gl could not be accessed.
-            sys.stdout.write(
-                f"\n(test) No self.gl instance found. Could not remove groups.")
+            self.log.info(
+                f"(test) No self.gl instance found. Could not remove groups.")
         else:
             # again, this should never execute
-            sys.exit(
-                f"\nHmm... not sure how this happened. Could not remove groups.\nself.gl: <{self.gl}>, self.test: <{self.test}>")
+            self.log.error(
+                f"Hmm... not sure how this happened. Could not remove groups.\nself.gl: <{self.gl}>, self.test: <{self.test}>")
+            sys.exit()
 
     def sync_members(self, ad_group, gl_group):
         '''
@@ -170,18 +183,18 @@ class GladSync:
             ad_members_response = self.session.get(
                 self.config.ad_url + '/api/groups/' + ad_group['id'] + '/members')
         except Exception as e:
-            sys.stdout.write(
-                f"\nAD group <{ad_group['displayName']}, {ad_group['id']}> members could not be fetched. {e}")
+            self.log.warning(
+                f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be fetched. {e}")
             return
 
         # load member data from json
         try:
             ad_members = json.loads(ad_members_response.text)['value']
         except Exception as e:
-            sys.stdout.write(
-                f"\nAD group <{ad_group['displayName']}, {ad_group['id']}> members could not be loaded from json. {e}")
+            self.log.warning(
+                f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be loaded from json. {e}")
             if self.verbose:
-                sys.stdout.write(f"\n\tJSON: {ad_members_response.text}")
+                self.log.debug(f"\tJSON: {ad_members_response.text}")
 
         # remove gl_group_members that are not in ad_group
         ad_member_names = [m['displayName'].lower() for m in ad_members]
@@ -192,14 +205,14 @@ class GladSync:
                 # gl_group_members is the local list
                 gl_group_members.remove(gl_member)
                 if self.test:
-                    sys.stdout.write(
-                        f"\n(test) GitLab group <{gl_group.name}, {gl_group.id}> member <{gl_member.name}, {gl_member.id}> would be deleted.")
+                    self.log.info(
+                        f"(test) GitLab group <{gl_group.name}, {gl_group.id}> member <{gl_member.name}, {gl_member.id}> would be deleted.")
                 else:
                     if self.delete:
                         gl_member.delete()
                     else:
-                        sys.stdout.write(
-                            f"\n(delete) GitLab group <{gl_group.name}, {gl_group.id}> member <{gl_member.name}, {gl_member.id}> would be deleted.")
+                        self.log.info(
+                            f"(delete) GitLab group <{gl_group.name}, {gl_group.id}> member <{gl_member.name}, {gl_member.id}> would be deleted.")
 
         # add members that are in the ad_group but not gitlab
         gl_member_names = [m.name.lower() for m in gl_group_members]
@@ -218,22 +231,22 @@ class GladSync:
                             'access_level': self.config.access_level
                         }
                         if self.test:
-                            sys.stdout.write(
-                                f"\n(test) Member {create_member} would be added to GitLab group <{gl_group.name}, {gl_group.id}>.")
+                            self.log.info(
+                                f"(test) Member {create_member} would be added to GitLab group <{gl_group.name}, {gl_group.id}>.")
                         else:
                             try:
                                 gl_group.members.create(create_member)
                             except Exception as e:
-                                sys.stdout.write(
-                                    f"\nMember {create_member} could not be added to GitLab group <{gl_group.name}, {gl_group.id}>. {e}")
+                                self.log.warning(
+                                    f"Member {create_member} could not be added to GitLab group <{gl_group.name}, {gl_group.id}>. {e}")
                             match_found = True
                             break
 
                 # if no match is found, send invite email based on the info in AD.
                 if not match_found:
                     if self.test:
-                        sys.stdout.write(
-                            f"\n(test) Invite email would be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>.")
+                        self.log.info(
+                            f"(test) Invite email would be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>.")
                     else:
                         try:
                             gl_group.invitations.update(
@@ -241,8 +254,8 @@ class GladSync:
                                 {'access_level': self.config.access_level}
                             )
                         except Exception as e:
-                            sys.stdout.write(
-                                f"\nInvite email could not be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>. {e}")
+                            self.log.warning(
+                                f"Invite email could not be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>. {e}")
 
     def create_group(self, ad_group):
         '''
@@ -259,13 +272,14 @@ class GladSync:
         }
 
         if self.test:
-            sys.stdout.write(f"\n(test) Would create group: {gl_group}")
+            self.log.info(f"(test) Would create group: {gl_group}")
         else:
             try:
                 gl_group = self.gl.groups.create(gl_group)
             except Exception as e:
-                sys.exit(
-                    f"\nGitLab group {gl_group} could not be created. {e}")
+                self.log.error(
+                    f"GitLab group {gl_group} could not be created. {e}")
+                sys.exit()
 
         # use sync_members to add correct group members
         self.sync_members(ad_group, gl_group)
@@ -276,6 +290,10 @@ class GladSync:
         check gitlab for all groups and members. Print all.
         '''
         groups = self.gl_groups
+        gr = []
+        for g in groups:
+            gr.append(f"<Group {g.id} '{g.name}', parent: {g.parent_id}>")
         members = self.parent_group.members_all.list(get_all=True)
-        sys.exit(
-            f"\nParent: {self.parent_group}\n\nGroups: {groups}\n\nMembers: {members}")
+        self.log.error(
+            f"Parent: {self.parent_group}\n\nGroups: {gr}\n\nMembers: {members}")
+        sys.exit()

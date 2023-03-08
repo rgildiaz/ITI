@@ -3,6 +3,7 @@ import gitlab
 import sys
 import os
 import yaml
+import logging
 
 # Default config details. Overwritten by values in the config file if they are given.
 # Since attrs are generated automatically, add more key/value pairs here if more config data needed.
@@ -14,20 +15,31 @@ defaults = {
     'ad_url': '',
     'ad_user': '',
     'ad_pass': '',
-    'access_level': gitlab.const.AccessLevel.DEVELOPER
+    'access_level': gitlab.const.AccessLevel.DEVELOPER,
 }
 
 
 class Config:
     def __init__(self, config_path: Path, test: bool, verbose: bool):
         '''
-        Parse and validate config data from .yaml config files. (TODO add other formats?)
+        Parse and validate config data from .yaml config files.
+        Also, setup a root logger.
 
         Args:
             config_path (Path) : the path to the .yaml config file to use.
             test (bool) : test mode switch (`False` will modify GitLab).
             verbose (bool) : verbose switch (`True` will print extra information).
         '''
+        # setup logging and stdout handler
+        # another file handler is setup in self.parse() if a log_file is specified
+        self.log = logging.getLogger()
+        self.log.setLevel(logging.DEBUG)
+        std_handler = logging.StreamHandler(sys.stdout)
+        std_handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - gladsync - %(levelname)s - %(message)s')
+        std_handler.setFormatter(formatter)
+        self.log.addHandler(std_handler)
+
         self.validate_path(config_path)
 
         config = self.parse(config_path)
@@ -60,18 +72,19 @@ class Config:
                     setattr(self, key, defaults[key])
 
         if verbose:
-            sys.stdout.write(f"\nConfig: {self._get_attrs()}\n")
+            self.log.debug(f"Config: {self._get_attrs()}")
 
         # since gitlab values were skipped in test mode above, print warning.
         if missing_test_values:
-            sys.stdout.write(
-                f"\n(test) Required values not found in {pwd}/{config_path}: {missing_test_values}\n")
+            self.log.info(
+                f"(test) Required values not found in {pwd}/{config_path}: {missing_test_values}")
         if missing_values:
-            sys.exit(
-                f"\nRequired values not found in {pwd}/{config_path}: {missing_values}")
+            self.log.error(
+                f"Required values not found in {pwd}/{config_path}: {missing_values}")
+            sys.exit()
             pass
 
-    def _get_attrs(self):
+    def _get_attrs(self) -> dict:
         '''
         Safely get all attributes.
 
@@ -80,7 +93,6 @@ class Config:
         '''
         # the attrs to replace in output
         protected = ['gl_pat', 'ad_pass']
-        # have to make a copy to avoid modifying attrs.
         attrs = self.__dict__.copy()
 
         for a in protected:
@@ -107,15 +119,15 @@ class Config:
         # Path/file validation
         try:
             if not os.path.exists(path):
-                sys.stderr.write(f'Path "./{path}" does not exist.\n')
+                self.log.error(f'Path "./{path}" does not exist.')
                 valid = False
             elif not os.path.isfile(path):
-                sys.stderr.write(
-                    f'Object at path "./{path}" is not a file.\n')
+                self.log.error(
+                    f'Object at path "./{path}" is not a file.')
                 valid = False
         except TypeError:
-            sys.stderr.write(
-                f'Path "./{path}" must be of type Path. Type {type(path)} given.\n')
+            self.log.error(
+                f'Path "./{path}" must be of type Path. Type {type(path)} given.')
             valid = False
 
         if not valid:
@@ -141,19 +153,26 @@ class Config:
                 for line in f:
                     conf += line
         except Exception:
-            sys.exit(f'Could not read config file {config_file}')
+            self.log.error(f'Could not read config file {config_file}')
+            sys.exit()
 
         try:
             config = yaml.safe_load(conf)
         except Exception as e:
-            sys.exit(f'Could not load YAML from config file.\n{conf}')
+            self.log.error(f'Could not load YAML from config file.{conf}')
+            sys.exit()
+
+        self.configure_log(config)
 
         # set access level to the appropriate gitlab.const
+        if not config['access_level']:
+            config['access_level'] = ""
+
         config['access_level'] = self.set_access(config['access_level'])
 
         return config
 
-    def set_access(self, access: str):
+    def set_access(self, access: str) -> gitlab.const.AccessLevel:
         '''
         Set gitlab.const.AccessLevel based on parsed config data.
 
@@ -169,7 +188,6 @@ class Config:
             gitlab.const.AccessLevel : the access level const corresponding to config
         '''
 
-        # Access level const specifications
         access_levels = {
             'guest': gitlab.const.AccessLevel.GUEST,
             'reporter': gitlab.const.AccessLevel.REPORTER,
@@ -178,21 +196,35 @@ class Config:
             'owner': gitlab.const.AccessLevel.OWNER
         }
 
-        # If access cannot be parsed, set to first element of dict
-        min_access = list(access_levels.items())[0]
-
+        # If access cannot be parsed or does not exist, set to default value
         if access:
             try:
                 out = access_levels[access.lower()]
             except Exception as e:
-                sys.stdout.write(
-                    f"Given access <{access}> not valid. Reverting to minimum level: {min_access}")
-                # min_access is a tuple, so need to get second element
-                out = min_access[1]
+                self.log.info(
+                    f"Given access <{access}> not valid. Reverting to default level: {defaults['access_level']}")
+                out = defaults['access_level']
         else:
-            out = min_access[1]
+            out = defaults['access_level']
 
         return out
+
+    def configure_log(self, config):
+        '''
+        Create a logging.FileHandler() and attach it to self.log if a log_file is specified in the config.
+
+        Args:
+            config : a parsed YAML config file
+        '''
+        if 'log_file' in config:
+            try:
+                file_handler = logging.FileHandler(config['log_file'])
+                file_handler.setLevel(logging.DEBUG)
+                formatter = logging.Formatter('%(asctime)s - gladsync - %(levelname)s - %(message)s')
+                file_handler.setFormatter(formatter)
+                self.log.addHandler(file_handler)
+            except Exception as e:
+                self.log.error(f'Log file cannot be setup: {e}')
 
 
 # testing

@@ -31,7 +31,7 @@ def main(
     ),
     delete: bool = typer.Option(
         True,
-        help="Delete GitLab groups as necessary. If off, print expected changes but make no modifications."
+        help="Delete GitLab groups and members as necessary. Otherwise, print expected changes but make no modifications."
     ),
     skip_ad: bool = typer.Option(
         False,
