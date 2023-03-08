@@ -36,7 +36,8 @@ class Config:
         self.log.setLevel(logging.DEBUG)
         std_handler = logging.StreamHandler(sys.stdout)
         std_handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - gladsync - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(
+            '%(asctime)s - gladsync - %(levelname)s - %(message)s')
         std_handler.setFormatter(formatter)
         self.log.addHandler(std_handler)
 
@@ -82,7 +83,8 @@ class Config:
             self.log.error(
                 f"Required values not found in {pwd}/{config_path}: {missing_values}")
             sys.exit()
-            pass
+            
+        self.log.info('config.Config complete!')
 
     def _get_attrs(self) -> dict:
         '''
@@ -133,6 +135,8 @@ class Config:
         if not valid:
             sys.exit("Errors found. Exiting...")
 
+        self.log.debug(f"Path to config file valid: {path}")
+
         # will always return true or exit in above block
         return valid
 
@@ -169,6 +173,8 @@ class Config:
             config['access_level'] = ""
 
         config['access_level'] = self.set_access(config['access_level'])
+
+        self.log.info(f'Config file {config_file} parsed.')
 
         return config
 
@@ -220,11 +226,15 @@ class Config:
             try:
                 file_handler = logging.FileHandler(config['log_file'])
                 file_handler.setLevel(logging.DEBUG)
-                formatter = logging.Formatter('%(asctime)s - gladsync - %(levelname)s - %(message)s')
+                formatter = logging.Formatter(
+                    '%(asctime)s - gladsync - %(levelname)s - %(message)s')
                 file_handler.setFormatter(formatter)
                 self.log.addHandler(file_handler)
+                self.log.info(f"Log file '{config['log_file']}' found")
             except Exception as e:
                 self.log.error(f'Log file cannot be setup: {e}')
+        else:
+            self.log.info(f"'log_file' not found in config.")
 
 
 # testing

@@ -24,7 +24,7 @@ def main(
         help="Test mode. Print expected changes but make no modifications."
     ),
     verbose: bool = typer.Option(
-        True,   # TODO turn this off, on for testing
+        False,
         "--verbose",
         "-v",
         help="Verbose. Print extra information while running."

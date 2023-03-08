@@ -8,5 +8,6 @@ __pycache__
 # secrets!
 secrets.py
 
-# the test config file (contains secrets!)
+# testing
 test.yaml
+*.log
