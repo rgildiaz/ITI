@@ -32,5 +32,5 @@ ad_pass: ''
 access_level: ''
 
 # The log file to write to.
-# If no path is given, then print to standard out.
+# If no path is given, print to stdout.
 log_file: ''

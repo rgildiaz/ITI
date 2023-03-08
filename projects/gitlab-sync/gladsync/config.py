@@ -1,9 +1,10 @@
-from pathlib import Path
-import gitlab
-import sys
-import os
-import yaml
 import logging
+import os
+import sys
+from pathlib import Path
+
+import gitlab
+import yaml
 
 # Default config details. Overwritten by values in the config file if they are given.
 # Since attrs are generated automatically, add more key/value pairs here if more config data needed.
@@ -20,26 +21,35 @@ defaults = {
 
 
 class Config:
-    def __init__(self, config_path: Path, test: bool, verbose: bool):
-        '''
+    def __init__(self, config_path: Path, test: bool, verbose: bool, std_out: bool):
+        """
         Parse and validate config data from .yaml config files.
-        Also, setup a root logger.
+        Also, set up a root logger.
 
         Args:
             config_path (Path) : the path to the .yaml config file to use.
-            test (bool) : test mode switch (`False` will modify GitLab).
+            test (bool) : test mode switch (`True` will make no remote changes).
             verbose (bool) : verbose switch (`True` will print extra information).
-        '''
+            std_out (bool) : standard out print switch (`True` will print to stdout).
+        """
         # setup logging and stdout handler
-        # another file handler is setup in self.parse() if a log_file is specified
+        # another file handler is set up in self.parse() if a log_file is specified
         self.log = logging.getLogger()
-        self.log.setLevel(logging.DEBUG)
-        std_handler = logging.StreamHandler(sys.stdout)
-        std_handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - gladsync - %(levelname)s - %(message)s')
-        std_handler.setFormatter(formatter)
-        self.log.addHandler(std_handler)
+        if verbose:
+            self.log.setLevel(logging.DEBUG)
+        else:
+            self.log.setLevel(logging.INFO)
 
+        # only add the stdout handler if switched.
+        if std_out:
+            std_handler = logging.StreamHandler(sys.stdout)
+            std_handler.setLevel(logging.DEBUG)
+            formatter = logging.Formatter(
+                '%(asctime)s - gladsync (%(module)s) - %(levelname)s - %(message)s')
+            std_handler.setFormatter(formatter)
+            self.log.addHandler(std_handler)
+
+        # once the std logger is set up, begin config logic.
         self.validate_path(config_path)
 
         config = self.parse(config_path)
@@ -58,7 +68,7 @@ class Config:
                 else:
                     # set as default if empty value is provided
                     setattr(self, key, defaults[key])
-            except KeyError as e:
+            except KeyError:
                 # since GL info doesn't matter in test mode, skip GL info if not found
                 # TODO REMOVE AD KEYS FROM LIST
                 if test and (key in ['gl_url', 'gl_pat', 'gl_root', 'ad_url', 'ad_user', 'ad_pass']):
@@ -82,15 +92,16 @@ class Config:
             self.log.error(
                 f"Required values not found in {pwd}/{config_path}: {missing_values}")
             sys.exit()
-            pass
+
+        self.log.info('Config complete!')
 
     def _get_attrs(self) -> dict:
-        '''
+        """
         Safely get all attributes.
 
         Returns:
             dict : this object's attributes with sensitive information removed.
-        '''
+        """
         # the attrs to replace in output
         protected = ['gl_pat', 'ad_pass']
         attrs = self.__dict__.copy()
@@ -100,20 +111,20 @@ class Config:
                 # replace the value if it exists
                 if attrs[a]:
                     attrs[a] = '(removed from output)'
-            except:
+            except Exception:
                 continue
 
         return attrs
 
     def validate_path(self, path: Path) -> bool:
-        '''
+        """
         Ensure the path to the config file is valid. Exit with errors if not.
 
         Args:
-            config_path (Path) : the path to the config file to use.
+            path (Path) : the path to the config file to use.
         Returns:
-            bool : whether or not the path is valid.
-        '''
+            bool : whether the path is valid.
+        """
         valid = True
 
         # Path/file validation
@@ -133,18 +144,20 @@ class Config:
         if not valid:
             sys.exit("Errors found. Exiting...")
 
+        self.log.debug(f"Path to config file valid: {path}")
+
         # will always return true or exit in above block
         return valid
 
     def parse(self, config_file: Path) -> dict:
-        '''
+        """
         Parse a YAML config file.
 
         Args:
             config_file (Path) : the path to a YAML config file.
         Returns:
             dict : a dict representation of the given YAML file.
-        '''
+        """
         conf = ""
 
         try:
@@ -159,7 +172,7 @@ class Config:
         try:
             config = yaml.safe_load(conf)
         except Exception as e:
-            self.log.error(f'Could not load YAML from config file.{conf}')
+            self.log.error(f'Could not load YAML from config file {config_file}')
             sys.exit()
 
         self.configure_log(config)
@@ -170,10 +183,12 @@ class Config:
 
         config['access_level'] = self.set_access(config['access_level'])
 
+        self.log.debug(f'Config file {config_file} parsed')
+
         return config
 
     def set_access(self, access: str) -> gitlab.const.AccessLevel:
-        '''
+        """
         Set gitlab.const.AccessLevel based on parsed config data.
 
         GUEST: 10
@@ -184,9 +199,9 @@ class Config:
 
         Args:
             access (str) : a string representing access level.
-        Returns: 
+        Returns:
             gitlab.const.AccessLevel : the access level const corresponding to config
-        '''
+        """
 
         access_levels = {
             'guest': gitlab.const.AccessLevel.GUEST,
@@ -202,7 +217,7 @@ class Config:
                 out = access_levels[access.lower()]
             except Exception as e:
                 self.log.info(
-                    f"Given access <{access}> not valid. Reverting to default level: {defaults['access_level']}")
+                    f"Given access level <{access}> not valid. Reverting to default level: {defaults['access_level']}")
                 out = defaults['access_level']
         else:
             out = defaults['access_level']
@@ -210,24 +225,27 @@ class Config:
         return out
 
     def configure_log(self, config):
-        '''
+        """
         Create a logging.FileHandler() and attach it to self.log if a log_file is specified in the config.
 
         Args:
             config : a parsed YAML config file
-        '''
+        """
         if 'log_file' in config:
             try:
                 file_handler = logging.FileHandler(config['log_file'])
                 file_handler.setLevel(logging.DEBUG)
-                formatter = logging.Formatter('%(asctime)s - gladsync - %(levelname)s - %(message)s')
+                formatter = logging.Formatter(
+                    '%(asctime)s - gladsync (%(module)s) - %(levelname)s - %(message)s')
                 file_handler.setFormatter(formatter)
                 self.log.addHandler(file_handler)
+                self.log.debug(f"Log file '{config['log_file']}' found")
             except Exception as e:
-                self.log.error(f'Log file cannot be setup: {e}')
+                self.log.error(f'Log file cannot be setup.')
+                self.log.debug(e)
+        else:
+            self.log.debug(f"'log_file' not found in config.")
 
 
-# testing
 if __name__ == "__main__":
-    print(os.getcwd())
-    Config('test.yaml', True)
+    pass

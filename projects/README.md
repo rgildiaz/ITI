@@ -7,4 +7,4 @@
 - [Verify Installations Remotely with Ansible](./ansible) - _October 2022_
 - [Gravwell for Data Storage and Analysis](./gravwell) - _December 2022_
 - [The Grafana Observability Stack](./grafana) - _January 2022_
-- [Sync GitLab Groups with Active Directory](./gitlab-sync) - _January/February 2022_
+- [Sync GitLab Groups with Active Directory](./gitlab-sync) - _February/March 2022_

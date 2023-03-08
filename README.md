@@ -1,8 +1,8 @@
 # ITI Project Documentation
 
-Starting in the summer of 2022, I have held a position at the [Information Trust Institute](https://iti.illinois.edu/) as a program management and operations support intern. This repository compiles all the documentation I've written at the ITI so far.
+From summer 2022 through spring 2023, I have had the chance to work at the [Information Trust Institute](https://iti.illinois.edu/) as a program management and operations support intern. This repository compiles the documentation for all the projects I've worked on so far at the ITI.
 
-Each of the files or directories in the `projects` directory are self-contained. The projects I have documented so far, in order of work, are:
+Each of the directories in the `projects` folder are self-contained. The projects I have documented so far, in order of work, are:
 
 - [PXE Boot ShredOS](./projects/pxeboot) - _June/July 2022_
 - [Factory Reset Networking Equipment](./projects/factory-reset)  - _July 2022_
@@ -11,4 +11,4 @@ Each of the files or directories in the `projects` directory are self-contained.
 - [Verify Installations Remotely with Ansible](./projects/ansible) - _October 2022_
 - [Gravwell for Data Storage and Analysis](./projects/gravwell) - _December 2022_
 - [The Grafana Observability Stack](./projects/grafana) - _January 2022_
-- [Sync GitLab Groups with Active Directory](./projects/gitlab-sync) - _January/February 2022_
+- [Sync GitLab Groups with Active Directory](./projects/gitlab-sync) - _February/March 2022_

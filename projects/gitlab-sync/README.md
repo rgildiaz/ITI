@@ -1,13 +1,33 @@
 # GLADSync Utility
 
-The **G**it**L**ab **A**ctive **D**irectory **Sync** Utility syncs GitLab groups with Active Directory groups. It can either be run standalone or by a scheduling tool such as `crontab`.
+**GLADSync** is the **G**it**L**ab **A**ctive **D**irectory **Sync** Utility. It modifies GitLab groups to match an Active Directory instance. GLADSync can either be run standalone or by a scheduling tool such as `crontab`. In scenarios where GitLab groups need to be regularly updated to match AD, GLADSync can be used to automate this process.
 
 ### Contents
 
 - [Usage](#usage)
 - [Methodology](#methodology)
 
+---
+
 ## Usage
+
+If all dependencies are installed, GLADSync can be run with the command:
+
+```
+$ python -m gladsync [OPTIONS]
+```
+
+or
+
+```
+$ python3 gladsync [OPTIONS]
+```
+
+See [the available command line options below](#command-line-options).
+
+If requirements need to be installed, follow the steps below:
+
+### First-time Setup
 
 First, install the necessary packages:
 
@@ -41,7 +61,7 @@ ad_pass: "bar"
 access_level: "developer"
 
 # The log file to write to. If no path is given, print to standard out.
-log_file: './logs/gladsync-YYYMMDD.log'
+log_file: "./logs/gladsync-YYYMMDD.log"
 ```
 
 Now, GLADSync can be run standalone:
@@ -69,15 +89,16 @@ In this example, the script will run every 4 hours. Change the given paths as ne
 
 ### Command Line Options
 
-The `-config.file` option is required. Provide it the path to a config file as described above.
-
 ```
 -config.file                PATH    The config file to use. [default: None] [required]
 --test        -T                    Test mode. Print expected changes but make no modifications. [default: True]
 --verbose     -v                    Verbose. Print extra information while running. [default: True]
---delete      --no-delete           Delete GitLab groups and members as necessary. Otherwise, print expected changes but make no modifications. [default: delete]
+--no-delete   -d                    Delete GitLab groups and members as necessary. Otherwise, print expected changes but make no modifications. [default: delete]
+--no-print    -p                    Print logs to standard out. [default: True]
 --help                              Show this message and exit.
 ```
+
+The `-config.file` option is required. Provide it the path to a config file as described above.
 
 ## Methodology
 
@@ -91,8 +112,8 @@ The [Typer](https://typer.tiangolo.com/) library allows for easy CLI implementat
 
 #### python-gitlab
 
-The [`python-gitlab`](https://python-gitlab.readthedocs.io/en/stable/index.html) package is a wrapper around the [GitLab API](https://docs.gitlab.com/ee/api/rest/), which is used in this program to access and modify GitLab groups.
+The [`python-gitlab`](https://python-gitlab.readthedocs.io/en/stable/index.html) package is a wrapper around the [GitLab API](https://docs.gitlab.com/ee/api/rest/), which is used in this program to access and modify GitLab groups. It can be used to get and post information about your GitLab instance's groups, users, projects, and other GitLab elements. In this case, it is used to read and modify groups to match AD.
 
 #### Active Directory API
 
-The [Active Directory API](https://learn.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) is accessed directly using the [`requests`](https://pypi.org/project/requests/) library, and responses are parsed using the [`json`](https://docs.python.org/3/library/json.html) library.
+The [Active Directory API](https://learn.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) is accessed directly using the [`requests`](https://pypi.org/project/requests/) library, and responses are parsed using the [`json`](https://docs.python.org/3/library/json.html) library. The AD API can be used to get and post information about AD users, groups, etc. In this case, it is _only_ used for reading data, as no modifications are made to AD.
