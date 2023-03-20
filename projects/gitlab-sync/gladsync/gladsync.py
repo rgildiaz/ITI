@@ -22,7 +22,7 @@ class GladSync:
         '''
         # root logger should already be setup from config.
         self.log = logging.getLogger()
-        self.log.info('gladsync.Gladsync started.')
+        self.log.info('Gladsync started')
 
         # if in test mode, gitlab auth may not be provided, so set blank defaults
         gl = None
@@ -105,7 +105,7 @@ class GladSync:
             # start the main program loop
             self.sync_groups()
 
-        self.log('gladsync.Gladsync complete!')
+        self.log('Gladsync complete!')
 
     def sync_groups(self):
         '''
@@ -295,6 +295,6 @@ class GladSync:
         for g in groups:
             gr.append(f"<Group {g.id} '{g.name}', parent: {g.parent_id}>")
         members = self.parent_group.members_all.list(get_all=True)
-        self.log.error(
-            f"Parent: {self.parent_group}\n\nGroups: {gr}\n\nMembers: {members}")
+        self.log.debug(
+            f"\nParent: {self.parent_group}\n\nGroups: {gr}\n\nMembers: {members}")
         sys.exit()

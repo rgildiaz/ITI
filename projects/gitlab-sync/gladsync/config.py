@@ -20,27 +20,32 @@ defaults = {
 
 
 class Config:
-    def __init__(self, config_path: Path, test: bool, verbose: bool):
+    def __init__(self, config_path: Path, test: bool, verbose: bool, std_out: bool):
         '''
         Parse and validate config data from .yaml config files.
         Also, setup a root logger.
 
         Args:
             config_path (Path) : the path to the .yaml config file to use.
-            test (bool) : test mode switch (`False` will modify GitLab).
+            test (bool) : test mode switch (`True` will make no remote changes).
             verbose (bool) : verbose switch (`True` will print extra information).
+            std_out (bool) : standard out print switch (`True` will print to stdout).
         '''
         # setup logging and stdout handler
         # another file handler is setup in self.parse() if a log_file is specified
         self.log = logging.getLogger()
         self.log.setLevel(logging.DEBUG)
-        std_handler = logging.StreamHandler(sys.stdout)
-        std_handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter(
-            '%(asctime)s - gladsync - %(levelname)s - %(message)s')
-        std_handler.setFormatter(formatter)
-        self.log.addHandler(std_handler)
+        
+        # only add the stdout handler if switched.
+        if std_out:
+            std_handler = logging.StreamHandler(sys.stdout)
+            std_handler.setLevel(logging.DEBUG)
+            formatter = logging.Formatter(
+                '%(asctime)s - gladsync (%(module)s) - %(levelname)s - %(message)s')
+            std_handler.setFormatter(formatter)
+            self.log.addHandler(std_handler)
 
+        # once the std logger is setup, begin config logic.
         self.validate_path(config_path)
 
         config = self.parse(config_path)
@@ -84,7 +89,7 @@ class Config:
                 f"Required values not found in {pwd}/{config_path}: {missing_values}")
             sys.exit()
             
-        self.log.info('config.Config complete!')
+        self.log.info('Config complete!')
 
     def _get_attrs(self) -> dict:
         '''
@@ -174,7 +179,7 @@ class Config:
 
         config['access_level'] = self.set_access(config['access_level'])
 
-        self.log.info(f'Config file {config_file} parsed.')
+        self.log.info(f'Config file {config_file} parsed')
 
         return config
 
@@ -208,7 +213,7 @@ class Config:
                 out = access_levels[access.lower()]
             except Exception as e:
                 self.log.info(
-                    f"Given access <{access}> not valid. Reverting to default level: {defaults['access_level']}")
+                    f"Given access level <{access}> not valid. Reverting to default level: {defaults['access_level']}")
                 out = defaults['access_level']
         else:
             out = defaults['access_level']
@@ -227,7 +232,7 @@ class Config:
                 file_handler = logging.FileHandler(config['log_file'])
                 file_handler.setLevel(logging.DEBUG)
                 formatter = logging.Formatter(
-                    '%(asctime)s - gladsync - %(levelname)s - %(message)s')
+                    '%(asctime)s - gladsync (%(module)s) - %(levelname)s - %(message)s')
                 file_handler.setFormatter(formatter)
                 self.log.addHandler(file_handler)
                 self.log.info(f"Log file '{config['log_file']}' found")
