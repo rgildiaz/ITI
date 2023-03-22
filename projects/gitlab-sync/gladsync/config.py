@@ -34,7 +34,10 @@ class Config:
         # setup logging and stdout handler
         # another file handler is setup in self.parse() if a log_file is specified
         self.log = logging.getLogger()
-        self.log.setLevel(logging.DEBUG)
+        if verbose:
+            self.log.setLevel(logging.DEBUG)
+        else:
+            self.log.setLevel(logging.INFO)
         
         # only add the stdout handler if switched.
         if std_out:
@@ -179,7 +182,7 @@ class Config:
 
         config['access_level'] = self.set_access(config['access_level'])
 
-        self.log.info(f'Config file {config_file} parsed')
+        self.log.debug(f'Config file {config_file} parsed')
 
         return config
 
@@ -235,11 +238,11 @@ class Config:
                     '%(asctime)s - gladsync (%(module)s) - %(levelname)s - %(message)s')
                 file_handler.setFormatter(formatter)
                 self.log.addHandler(file_handler)
-                self.log.info(f"Log file '{config['log_file']}' found")
+                self.log.debug(f"Log file '{config['log_file']}' found")
             except Exception as e:
                 self.log.error(f'Log file cannot be setup: {e}')
         else:
-            self.log.info(f"'log_file' not found in config.")
+            self.log.debug(f"'log_file' not found in config.")
 
 
 # testing

@@ -5,8 +5,6 @@ import json
 from config import Config
 import logging
 
-# TODO remove skip_ad option
-
 
 class GladSync:
     def __init__(self, config: Config, test: bool, verbose: bool, delete: bool, skip_ad: bool):
@@ -287,7 +285,7 @@ class GladSync:
 
     def test_print(self):
         '''
-        REMOVE LATER, only called when skip_ad is true
+        TODO REMOVE THIS, only called when skip_ad is true
         check gitlab for all groups and members. Print all.
         '''
         groups = self.gl_groups
