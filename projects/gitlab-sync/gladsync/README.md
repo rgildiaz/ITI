@@ -1,16 +1,14 @@
 # GLADSync Reference
 
-#### 🚧 UNDER CONSTRUCTION 🚧
+This document will walk through my thinking about the design of some of the program components, intended to make future maintenance and changes easier. For a more general overview of the program and how to use it, refer to [the `README` in the parent folder](../README.md).
 
-This document will walk through the design of some of the program components, intended to make future maintenance and changes easier. For a more general overview of the program and how to use it, refer to [the `README` in the parent folder](../README.md).
-
-The GLADSync package is split into three components:
+The GLADSync package is split into three major components:
 
 - [`main.py`](#mainpy) is the main entry-point for the CLI.
 - [`gladsync.py`](#gladsyncpy) contains the actual program logic.
 - [`config.py`](#configpy) is a helper for parsing config files.
 
-It additionally contains:
+It additionally contains some "helper" files:
 
 - [`example_config.yaml`](#app-configuration), which is a starter config file.
 - [this `README`](./README.md)!
@@ -42,7 +40,18 @@ The flow of the program can also be more easily seen in `main()`, as it first co
 
 ### `GladSync`
 
+When created, the GladSync object fetches the root logger, which should have been setup by [`config.py`](#configpy). It also attempts to connect to GitLab and AD. GladSync should log any connections that can't be established, but should only exit on fatal errors.
+
+In general, GladSync follows this flow:
+
+- Establish a connection to GitLab and AD using the provided config information
+- For each AD group, look for a GitLab group with the same name.
+  - If a group is found, check that all members in the AD group are present in GitLab. Add any members necessary.
+  - If a group is not found, create one and populate it with the necessary members.
+
 A `GladSync` object is created by [`main.py`](#mainconfig_path-test-verbose-delete).
+
+While the same functionality could be achieved with a simpler script format, I chose this object-oriented approach since it allows for easier development and maintenance down the road.
 
 ## [`config.py`](./config.py)
 
@@ -58,7 +67,11 @@ A starter configuration file can be found at [`./example_config.yaml`](./example
 
 ### [`python-gitlab`](https://python-gitlab.readthedocs.io/en/stable/index.html)
 
+The `python-gitlab` package provides a Python wrapper for the GitLab API. It is used in [`gladsync.py`](./gladsync.py) to connect and modify a GitLab instance.
+
 ### [Typer](https://typer.tiangolo.com/)
+
+The Typer framework allows for easier CLI creation in Python. It is used in [`main.py`](./main.py) to generate the actual CLI functionality, such as writing help text and configuring CLI options.
 
 ### Other
 

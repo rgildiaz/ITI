@@ -1,13 +1,33 @@
 # GLADSync Utility
 
-The **G**it**L**ab **A**ctive **D**irectory **Sync** Utility syncs GitLab groups with Active Directory groups. It can either be run standalone or by a scheduling tool such as `crontab`.
+**GLADSync** is the **G**it**L**ab **A**ctive **D**irectory **Sync** Utility. It modifies GitLab groups to match an Active Directory instance. GLADSync can either be run standalone or by a scheduling tool such as `crontab`.
 
 ### Contents
 
 - [Usage](#usage)
 - [Methodology](#methodology)
 
+---
+
 ## Usage
+
+If all dependencies are installed, GLADSync can be run with the command:
+
+```
+$ python -m gladsync [OPTIONS]
+```
+
+or
+
+```
+$ python3 gladsync [OPTIONS]
+```
+
+See [the available command line options below](#command-line-options).
+
+If requirements need to be installed, follow the steps below:
+
+### First-time Setup
 
 First, install the necessary packages:
 
@@ -41,7 +61,7 @@ ad_pass: "bar"
 access_level: "developer"
 
 # The log file to write to. If no path is given, print to standard out.
-log_file: './logs/gladsync-YYYMMDD.log'
+log_file: "./logs/gladsync-YYYMMDD.log"
 ```
 
 Now, GLADSync can be run standalone:
@@ -69,15 +89,16 @@ In this example, the script will run every 4 hours. Change the given paths as ne
 
 ### Command Line Options
 
-The `-config.file` option is required. Provide it the path to a config file as described above.
-
 ```
 -config.file                PATH    The config file to use. [default: None] [required]
 --test        -T                    Test mode. Print expected changes but make no modifications. [default: True]
 --verbose     -v                    Verbose. Print extra information while running. [default: True]
---delete      --no-delete           Delete GitLab groups and members as necessary. Otherwise, print expected changes but make no modifications. [default: delete]
+--no-delete   -d                    Delete GitLab groups and members as necessary. Otherwise, print expected changes but make no modifications. [default: delete]
+--no-print    -p                    Print logs to standard out. [default: True]
 --help                              Show this message and exit.
 ```
+
+The `-config.file` option is required. Provide it the path to a config file as described above.
 
 ## Methodology
 

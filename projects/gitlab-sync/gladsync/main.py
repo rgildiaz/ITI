@@ -31,6 +31,8 @@ def main(
     ),
     delete: bool = typer.Option(
         True,
+        "--no-delete",
+        "-d",
         help="Delete GitLab groups and members as necessary. Otherwise, print expected changes but make no modifications."
     ),
     skip_ad: bool = typer.Option(
@@ -41,8 +43,8 @@ def main(
     ),
     std_out: bool = typer.Option(
         True,
-        "--std_out",
-        "-o",
+        "--no-print",
+        "-p",
         help="Print logs to standard out."
     )
 ):
