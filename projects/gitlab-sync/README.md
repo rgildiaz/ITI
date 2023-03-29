@@ -1,6 +1,6 @@
 # GLADSync Utility
 
-**GLADSync** is the **G**it**L**ab **A**ctive **D**irectory **Sync** Utility. It modifies GitLab groups to match an Active Directory instance. GLADSync can either be run standalone or by a scheduling tool such as `crontab`.
+**GLADSync** is the **G**it**L**ab **A**ctive **D**irectory **Sync** Utility. It modifies GitLab groups to match an Active Directory instance. GLADSync can either be run standalone or by a scheduling tool such as `crontab`. In scenarios where GitLab groups need to be regularly updated to match AD, GLADSync can be used to automate this process.
 
 ### Contents
 
@@ -112,8 +112,8 @@ The [Typer](https://typer.tiangolo.com/) library allows for easy CLI implementat
 
 #### python-gitlab
 
-The [`python-gitlab`](https://python-gitlab.readthedocs.io/en/stable/index.html) package is a wrapper around the [GitLab API](https://docs.gitlab.com/ee/api/rest/), which is used in this program to access and modify GitLab groups.
+The [`python-gitlab`](https://python-gitlab.readthedocs.io/en/stable/index.html) package is a wrapper around the [GitLab API](https://docs.gitlab.com/ee/api/rest/), which is used in this program to access and modify GitLab groups. It can be used to get and post information about your GitLab instance's groups, users, projects, and other GitLab elements. In this case, it is used to read and modify groups to match AD.
 
 #### Active Directory API
 
-The [Active Directory API](https://learn.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) is accessed directly using the [`requests`](https://pypi.org/project/requests/) library, and responses are parsed using the [`json`](https://docs.python.org/3/library/json.html) library.
+The [Active Directory API](https://learn.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0) is accessed directly using the [`requests`](https://pypi.org/project/requests/) library, and responses are parsed using the [`json`](https://docs.python.org/3/library/json.html) library. The AD API can be used to get and post information about AD users, groups, etc. In this case, it is _only_ used for reading data, as no modifications are made to AD.

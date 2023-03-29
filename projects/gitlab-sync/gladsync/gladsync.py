@@ -13,10 +13,10 @@ class GladSync:
         Contains all program logic, called by main() in ./main.py.
 
         Args:
-            config (Config) : a config.Config object containing parsed config data.
-            test (bool) : Enable/disable test/print-only mode.
-            verbose (bool) : Enable/disable verbose logging.
-            delete (bool) : Enable/disable group/member deletion.
+            config  (Config) : a config.Config object containing parsed config data.
+            test    (bool)   : Enable/disable test/print-only mode.
+            verbose (bool)   : Enable/disable verbose logging. (Logs debug-level messages when on)
+            delete  (bool)   : Enable/disable group/member deletion.
         '''
         # root logger should already be setup from config.
         self.log = logging.getLogger()
@@ -31,6 +31,7 @@ class GladSync:
         try:
             gl = gitlab.Gitlab(url=str(config.gl_url),
                                private_token=str(config.gl_pat))
+            self.log.debug(f"GitLab instance accessed: {config.gl_url}")
         except Exception as e:
             if test:
                 # warn if in test mode
@@ -44,6 +45,7 @@ class GladSync:
         # fetch all groups
         try:
             gl_groups = gl.groups.list()
+            self.log.debug(f"Groups fetched: {len(gl_groups)}")
         except Exception as e:
             if test:
                 # warn if in test
@@ -58,6 +60,7 @@ class GladSync:
         try:
             # GitLab API only allows for edits in sub-groups, so a parent group needs to be given
             parent_group = gl.groups.get(id=config.gl_root)
+            self.log.debug(f"Root group fetched: {parent_group.name} ({parent_group.id})")
         except Exception as e:
             if test:
                 # warn if in test
@@ -73,6 +76,7 @@ class GladSync:
             try:
                 s = requests.Session()
                 s.auth = (config.ad_user, config.ad_pass)
+                self.log.debug(f"AD Session started: {config.ad_url}")
             except Exception as e:
                 self.log.error(f"AD Session could not be started. {e}")
                 sys.exit()
@@ -80,6 +84,7 @@ class GladSync:
             try:
                 ad_groups_response = s.get(config.ad_url + '/api/groups')
                 ad_groups = json.loads(ad_groups_response.text)['value']
+                self.log.debug(f"AD groups fetched: {len(ad_groups)}")
             except Exception as e:
                 self.log.error(f"AD groups could not be fetched. {e}")
                 sys.exit()
@@ -94,7 +99,6 @@ class GladSync:
 
         # inherited options
         self.test = test
-        self.verbose = verbose
         self.delete = delete
 
         if skip_ad:
@@ -103,13 +107,11 @@ class GladSync:
             # start the main program loop
             self.sync_groups()
 
-        self.log('Gladsync complete!')
+        self.log.info('Gladsync complete!')
 
     def sync_groups(self):
         '''
         Create, update, or delete GitLab groups to match AD. This is the app's main program loop.
-        Deletion is toggled with the `--no-delete` flag, but is on by default.
-        In test mode, 
         '''
         # check that all ad_groups are in gl
         for ad_group in self.ad_groups:
@@ -192,8 +194,7 @@ class GladSync:
         except Exception as e:
             self.log.warning(
                 f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be loaded from json. {e}")
-            if self.verbose:
-                self.log.debug(f"\tJSON: {ad_members_response.text}")
+            self.log.debug(f"\tJSON: {ad_members_response.text}")
 
         # remove gl_group_members that are not in ad_group
         ad_member_names = [m['displayName'].lower() for m in ad_members]
@@ -293,6 +294,6 @@ class GladSync:
         for g in groups:
             gr.append(f"<Group {g.id} '{g.name}', parent: {g.parent_id}>")
         members = self.parent_group.members_all.list(get_all=True)
-        self.log.debug(
+        self.log.info(
             f"\nParent: {self.parent_group}\n\nGroups: {gr}\n\nMembers: {members}")
         sys.exit()

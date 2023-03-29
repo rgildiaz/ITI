@@ -203,11 +203,11 @@ class Config:
         '''
 
         access_levels = {
-            'guest': gitlab.const.AccessLevel.GUEST,
-            'reporter': gitlab.const.AccessLevel.REPORTER,
-            'developer': gitlab.const.AccessLevel.DEVELOPER,
+            'guest'     : gitlab.const.AccessLevel.GUEST,
+            'reporter'  : gitlab.const.AccessLevel.REPORTER,
+            'developer' : gitlab.const.AccessLevel.DEVELOPER,
             'maintainer': gitlab.const.AccessLevel.MAINTAINER,
-            'owner': gitlab.const.AccessLevel.OWNER
+            'owner'     : gitlab.const.AccessLevel.OWNER
         }
 
         # If access cannot be parsed or does not exist, set to default value
