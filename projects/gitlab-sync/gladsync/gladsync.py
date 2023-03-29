@@ -7,22 +7,21 @@ import logging
 
 
 class GladSync:
-    def __init__(self, config: Config, test: bool, verbose: bool, delete: bool, skip_ad: bool):
-        '''
-        The GitLab Active Directory Sync utility. 
+    def __init__(self, config: Config, test: bool, delete: bool, skip_ad: bool):
+        """
+        The GitLab Active Directory Sync utility.
         Contains all program logic, called by main() in ./main.py.
 
         Args:
-            config (Config) : a config.Config object containing parsed config data.
-            test (bool) : Enable/disable test/print-only mode.
-            verbose (bool) : Enable/disable verbose logging.
-            delete (bool) : Enable/disable group/member deletion.
-        '''
+            config  (Config) : a config.Config object containing parsed config data.
+            test    (bool)   : Enable/disable test/print-only mode.
+            delete  (bool)   : Enable/disable group/member deletion.
+        """
         # root logger should already be setup from config.
         self.log = logging.getLogger()
         self.log.info('Gladsync started')
 
-        # if in test mode, gitlab auth may not be provided, so set blank defaults
+        # gitlab auth may not be provided in test mode, so set blank defaults
         gl = None
         gl_groups = None
         parent_group = None
@@ -31,9 +30,9 @@ class GladSync:
         try:
             gl = gitlab.Gitlab(url=str(config.gl_url),
                                private_token=str(config.gl_pat))
+            self.log.debug(f"GitLab instance accessed: {config.gl_url}")
         except Exception as e:
             if test:
-                # warn if in test mode
                 self.log.warning(
                     f"(test) GitLab instance cannot be accessed. {e}")
             else:
@@ -44,9 +43,9 @@ class GladSync:
         # fetch all groups
         try:
             gl_groups = gl.groups.list()
+            self.log.debug(f"Groups fetched: {len(gl_groups)}")
         except Exception as e:
             if test:
-                # warn if in test
                 self.log.warning(
                     f"(test) Cannot fetch groups. GitLab Authentication Error: {e}")
             else:
@@ -56,11 +55,11 @@ class GladSync:
 
         # fetch parent group
         try:
-            # GitLab API only allows for edits in sub-groups, so a parent group needs to be given
+            # GitLab API only allows for edits in subgroups, so a parent group needs to be given
             parent_group = gl.groups.get(id=config.gl_root)
+            self.log.debug(f"Root group fetched: {parent_group.name} ({parent_group.id})")
         except Exception as e:
             if test:
-                # warn if in test
                 self.log.warning(
                     f"(test) Root group could not be fetched. {e}")
             else:
@@ -73,6 +72,7 @@ class GladSync:
             try:
                 s = requests.Session()
                 s.auth = (config.ad_user, config.ad_pass)
+                self.log.debug(f"AD Session started: {config.ad_url}")
             except Exception as e:
                 self.log.error(f"AD Session could not be started. {e}")
                 sys.exit()
@@ -80,6 +80,7 @@ class GladSync:
             try:
                 ad_groups_response = s.get(config.ad_url + '/api/groups')
                 ad_groups = json.loads(ad_groups_response.text)['value']
+                self.log.debug(f"AD groups fetched: {len(ad_groups)}")
             except Exception as e:
                 self.log.error(f"AD groups could not be fetched. {e}")
                 sys.exit()
@@ -94,7 +95,6 @@ class GladSync:
 
         # inherited options
         self.test = test
-        self.verbose = verbose
         self.delete = delete
 
         if skip_ad:
@@ -103,14 +103,12 @@ class GladSync:
             # start the main program loop
             self.sync_groups()
 
-        self.log('Gladsync complete!')
+        self.log.info('Gladsync complete!')
 
     def sync_groups(self):
-        '''
+        """
         Create, update, or delete GitLab groups to match AD. This is the app's main program loop.
-        Deletion is toggled with the `--no-delete` flag, but is on by default.
-        In test mode, 
-        '''
+        """
         # check that all ad_groups are in gl
         for ad_group in self.ad_groups:
             # compare to gl groups
@@ -135,8 +133,8 @@ class GladSync:
                 # since failing to start self.gl should exit the program. elif there just for safety.
 
                 # since we're in test, run self.create_group() to print info about groups that would be created.
-                for ad_group in self.ad_groups:
-                    self.create_group(ad_group)
+                for group in self.ad_groups:
+                    self.create_group(group)
             else:
                 # this should never execute, so throw an error and exit if we get here.
                 self.log.error(
@@ -168,15 +166,15 @@ class GladSync:
             sys.exit()
 
     def sync_members(self, ad_group, gl_group):
-        '''
-        Sync the members between an AD and GL group. 
+        """
+        Sync the members between an AD and GL group.
         Read AD group members. Add and remove members from the gl_group to match.
         If in test mode, instead print members that would be added or removed.
 
         Args:
             ad_group : a JSON object representing the AD group.
             gl_group : a gitlab.Gitlab.Group object.
-        '''
+        """
         # get group members
         try:
             ad_members_response = self.session.get(
@@ -192,8 +190,7 @@ class GladSync:
         except Exception as e:
             self.log.warning(
                 f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be loaded from json. {e}")
-            if self.verbose:
-                self.log.debug(f"\tJSON: {ad_members_response.text}")
+            self.log.debug(f"\tJSON: {ad_members_response.text}")
 
         # remove gl_group_members that are not in ad_group
         ad_member_names = [m['displayName'].lower() for m in ad_members]
@@ -257,11 +254,11 @@ class GladSync:
                                 f"Invite email could not be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>. {e}")
 
     def create_group(self, ad_group):
-        '''
+        """
         Create a GitLab group with the members from the given ad_group. Top-level groups cannot be created (as a restriction of the GitLab API), so the parent_group is used.
 
         @param ad_group the AD group to copy to GitLab
-        '''
+        """
         parent_group = self.parent_group.id if self.parent_group else "<No gl_root Group>"
 
         gl_group = {
@@ -284,15 +281,15 @@ class GladSync:
         self.sync_members(ad_group, gl_group)
 
     def test_print(self):
-        '''
+        """
         TODO REMOVE THIS, only called when skip_ad is true
         check gitlab for all groups and members. Print all.
-        '''
+        """
         groups = self.gl_groups
         gr = []
         for g in groups:
             gr.append(f"<Group {g.id} '{g.name}', parent: {g.parent_id}>")
         members = self.parent_group.members_all.list(get_all=True)
-        self.log.debug(
+        self.log.info(
             f"\nParent: {self.parent_group}\n\nGroups: {gr}\n\nMembers: {members}")
         sys.exit()

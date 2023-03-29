@@ -1,4 +1,6 @@
+# IDE/misc
 .vscode/
+.idea/
 .DS_store
 
 # python

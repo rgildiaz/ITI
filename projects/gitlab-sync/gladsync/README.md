@@ -57,11 +57,42 @@ While the same functionality could be achieved with a simpler script format, I c
 
 ### `Config`
 
-the `Config` class parses the `.yaml` config file that is given by the `-config.file` command line option. It is called by [`GladSync`](#gladsync) on startup.
+the `Config` class parses the `.yaml` config file that is given by the `-config.file` command line option. It is called by [`GladSync`](#gladsync) on startup. I chose to use this pattern in part because of [Grafana Loki's configuration](https://grafana.com/docs/loki/latest/configuration/), which uses `.yaml` configs and the `-config.file` CLI option. YAML is also easy to read and write, and is a common configuration format.
+
+I wanted the Config utility to be dynamic, adjusting to new requirements and config options on the fly. By creating a list of default config options and overwriting these with parsed options read in from the YAML config, a list of all config options can be created. Iterating over this list allows for checking of required options (if the default option is blank and the parsed config entry is missing, an error can be thrown) and for the dynamic setting of new options (using the `setattr()` function). This approach also implicitly ignores any provided configs which have not been defined by the developer. To add a new config option, a new key must be added to the `defaults` dictionary, found at the top of [`config.py`](./config.py).
 
 ### App Configuration
 
-A starter configuration file can be found at [`./example_config.yaml`](./example_config.yaml).
+A starter configuration file can be found at [`./example_config.yaml`](./example_config.yaml). The current config options are:
+```yaml
+# The URL to your GitLab instance. 
+gl_url: 'https://gitlab.com'
+
+# The personal access token to use when accessing GitLab
+gl_pat: ''
+
+# The ID of the group to create all new synced groups under
+# The GitLab API disallows creation of top-level groups
+gl_root: ''
+
+# The URL to your Active Directory instance
+ad_url: ''
+
+# The username to use when accessing Active Directory
+ad_user: ''
+
+# The password to use when accessing Active Directory.
+ad_pass: ''
+
+# The access level to give to each person added to a GitLab group
+# Must be one of: [GUEST, REPORTER, DEVELOPER, MAINTAINER, OWNER]
+access_level: 'DEVELOPER'
+
+# The log file to write to.
+# If no path is given, print to stdout.
+log_file: ''
+
+```
 
 ## Dependencies
 
