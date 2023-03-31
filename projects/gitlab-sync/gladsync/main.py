@@ -48,14 +48,14 @@ def main(
         help="Print logs to standard out."
     )
 ):
-    '''
+    """
     Sync AD groups to GitLab!\n
     Fetches groups from AD and creates/modifies GitLab groups to match.\n
     A .yaml config file must be provided with the -config.file option. See `./gladsync/example_config.yaml`.
-    '''
+    """
     config = Config(config_path, test, verbose, std_out)
     # all program logic is contained in the GladSync object
-    GladSync(config, test, verbose, delete, skip_ad)
+    GladSync(config, test, delete, skip_ad)
 
 
 if __name__ == "__main__":
