@@ -6,7 +6,7 @@
   align-items: center;
 ">
   <img 
-    src="../img/bidi-test/IMG_4613.jpeg"
+    src="../../img/bidi-test/IMG_4613.jpeg"
     style="
       height: auto;
       width: 100%;
@@ -381,7 +381,7 @@ For this test, you can see that the bitrate is very close to the 1 Gbit benchmar
   align-items: center;
 ">
   <img 
-    src="../img/bidi-test/screenshot.png"
+    src="../../img/bidi-test/screenshot.png"
     style="
       height: auto;
       width: 100%;
