@@ -172,7 +172,7 @@ class Config:
         try:
             config = yaml.safe_load(conf)
         except Exception as e:
-            self.log.error(f'Could not load YAML from config file.{conf}')
+            self.log.error(f'Could not load YAML from config file {config_file}')
             sys.exit()
 
         self.configure_log(config)
@@ -241,7 +241,8 @@ class Config:
                 self.log.addHandler(file_handler)
                 self.log.debug(f"Log file '{config['log_file']}' found")
             except Exception as e:
-                self.log.error(f'Log file cannot be setup: {e}')
+                self.log.error(f'Log file cannot be setup.')
+                self.log.debug(e)
         else:
             self.log.debug(f"'log_file' not found in config.")
 

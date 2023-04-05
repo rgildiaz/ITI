@@ -1,7 +1,8 @@
-from gladsync import GladSync
-from config import Config
 from pathlib import Path
+
 import typer
+from config import Config
+from gladsync import GladSync
 
 # The CLI app
 app = typer.Typer(

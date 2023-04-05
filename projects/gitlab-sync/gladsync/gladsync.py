@@ -1,9 +1,10 @@
+import json
+import logging
 import sys
+
 import gitlab
 import requests
-import json
 from config import Config
-import logging
 
 
 class GladSync:
@@ -34,7 +35,8 @@ class GladSync:
         except Exception as e:
             if test:
                 self.log.warning(
-                    f"(test) GitLab instance cannot be accessed. {e}")
+                    f"(test) GitLab instance cannot be accessed.")
+                self.log.debug(e)
             else:
                 self.log.error(
                     f"GitLab instance cannot be accessed. Given: \n\tgl_url: {config.gl_url}\n\tgl_pat: {config.gl_pat}")
@@ -47,10 +49,12 @@ class GladSync:
         except Exception as e:
             if test:
                 self.log.warning(
-                    f"(test) Cannot fetch groups. GitLab Authentication Error: {e}")
+                    f"(test) Cannot fetch groups. GitLab Authentication Error.")
+                self.log.debug(e)
             else:
                 self.log.error(
-                    f"Cannot fetch groups. GitLab Authentication Error: {e}")
+                    f"Cannot fetch groups. GitLab Authentication Error.")
+                self.log.debug(e)
                 sys.exit()
 
         # fetch parent group
@@ -61,10 +65,12 @@ class GladSync:
         except Exception as e:
             if test:
                 self.log.warning(
-                    f"(test) Root group could not be fetched. {e}")
+                    f"(test) Root group could not be fetched.")
+                self.log.debug(e)
             else:
                 self.log.error(
-                    f"Root group {config.gl_root} could not be fetched. {e}")
+                    f"Root group {config.gl_root} could not be fetched.")
+                self.log.debug(e)
                 sys.exit()
 
         if not skip_ad:
@@ -74,7 +80,8 @@ class GladSync:
                 s.auth = (config.ad_user, config.ad_pass)
                 self.log.debug(f"AD Session started: {config.ad_url}")
             except Exception as e:
-                self.log.error(f"AD Session could not be started. {e}")
+                self.log.error(f"AD Session could not be started.")
+                self.log.debug(e)
                 sys.exit()
 
             try:
@@ -82,7 +89,8 @@ class GladSync:
                 ad_groups = json.loads(ad_groups_response.text)['value']
                 self.log.debug(f"AD groups fetched: {len(ad_groups)}")
             except Exception as e:
-                self.log.error(f"AD groups could not be fetched. {e}")
+                self.log.error(f"AD groups could not be fetched.")
+                self.log.debug(e)
                 sys.exit()
 
             self.session = s
@@ -181,7 +189,8 @@ class GladSync:
                 self.config.ad_url + '/api/groups/' + ad_group['id'] + '/members')
         except Exception as e:
             self.log.warning(
-                f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be fetched. {e}")
+                f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be fetched.")
+            self.log.debug(e)
             return
 
         # load member data from json
@@ -189,7 +198,8 @@ class GladSync:
             ad_members = json.loads(ad_members_response.text)['value']
         except Exception as e:
             self.log.warning(
-                f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be loaded from json. {e}")
+                f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be loaded from json.")
+            self.log.debug(e)
             self.log.debug(f"\tJSON: {ad_members_response.text}")
 
         # remove gl_group_members that are not in ad_group
@@ -234,7 +244,8 @@ class GladSync:
                                 gl_group.members.create(create_member)
                             except Exception as e:
                                 self.log.warning(
-                                    f"Member {create_member} could not be added to GitLab group <{gl_group.name}, {gl_group.id}>. {e}")
+                                    f"Member {create_member} could not be added to GitLab group <{gl_group.name}, {gl_group.id}>.")
+                                self.log.debug(e)
                             match_found = True
                             break
 
@@ -251,7 +262,8 @@ class GladSync:
                             )
                         except Exception as e:
                             self.log.warning(
-                                f"Invite email could not be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>. {e}")
+                                f"Invite email could not be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>.")
+                            self.log.debug(e)
 
     def create_group(self, ad_group):
         """
@@ -274,7 +286,8 @@ class GladSync:
                 gl_group = self.gl.groups.create(gl_group)
             except Exception as e:
                 self.log.error(
-                    f"GitLab group {gl_group} could not be created. {e}")
+                    f"GitLab group {gl_group} could not be created.")
+                self.log.debug(e)
                 sys.exit()
 
         # use sync_members to add correct group members
