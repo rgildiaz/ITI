@@ -3,6 +3,7 @@ import logging
 import sys
 
 import gitlab
+import ldap
 import requests
 from config import Config
 
