@@ -3,13 +3,13 @@ import logging
 import sys
 
 import gitlab
-import ldap
+from ldap3 import Server, Connection, ObjectDef, AttrDef, Reader, ALL, NTLM, SUBTREE
 import requests
 from config import Config
 
 
 class GladSync:
-    def __init__(self, config: Config, test: bool, delete: bool, skip_ad: bool):
+    def __init__(self, config: Config, test: bool, delete: bool, skip_ad: bool, verbose: bool):
         """
         The GitLab Active Directory Sync utility.
         Contains all program logic, called by main() in ./main.py.
@@ -62,7 +62,8 @@ class GladSync:
         try:
             # GitLab API only allows for edits in subgroups, so a parent group needs to be given
             parent_group = gl.groups.get(id=config.gl_root)
-            self.log.debug(f"Root group fetched: {parent_group.name} ({parent_group.id})")
+            self.log.debug(
+                f"Root group fetched: {parent_group.name} ({parent_group.id})")
         except Exception as e:
             if test:
                 self.log.warning(
@@ -75,27 +76,42 @@ class GladSync:
                 sys.exit()
 
         if not skip_ad:
-            # Create AD session and fetch groups
+            # Create LDAP session and fetch groups
             try:
-                s = requests.Session()
-                s.auth = (config.ad_user, config.ad_pass)
-                self.log.debug(f"AD Session started: {config.ad_url}")
+                s = Server(config.ad_url, get_info=ALL)
+                # TODO not sure if I fully understand authentication
+                c = Connection(s, user=config.ad_user, password=config.ad_pass,
+                               auto_bind=True, authentication=NTLM)
+                self.log.debug(f"LDAP Session started: {c}")
             except Exception as e:
                 self.log.error(f"AD Session could not be started.")
                 self.log.debug(e)
                 sys.exit()
 
             try:
-                ad_groups_response = s.get(config.ad_url + '/api/groups')
-                ad_groups = json.loads(ad_groups_response.text)['value']
-                self.log.debug(f"AD groups fetched: {len(ad_groups)}")
+                base = config.ldap_project_groups
+                filter = "(objectclass=group)"
+                attributes = [
+                    "displayName", 
+                    "objectclass", 
+                    "dn"            # gives full path to group
+                ]
+                ad_groups = c.search(
+                    search_base=base, 
+                    search_filter=filter,
+                    search_scope=SUBTREE,
+                    attributes=attributes
+                )
+                if ad_groups:
+                    self.log.debug(f"AD groups fetched: {len(ad_groups.entries)}")
+                    self.log.debug(f"All AD groups: {[g for g in ad_groups.entries]}")
             except Exception as e:
                 self.log.error(f"AD groups could not be fetched.")
                 self.log.debug(e)
                 sys.exit()
 
-            self.session = s
-            self.ad_groups = ad_groups
+            self.connection = c
+            self.ad_groups = ad_groups.entries
 
         # gl, gl_groups, parent_group will be None if in test AND gl auth not provided in config/not working.
         self.gl = gl
@@ -139,7 +155,7 @@ class GladSync:
                     self.create_group(ad_group)
             elif self.test:
                 # this _should_ only execute in test mode, even without the `elif`,
-                # since failing to start self.gl should exit the program. elif there just for safety.
+                # since failing to start self.gl should exit the program. elif just for safety.
 
                 # since we're in test, run self.create_group() to print info about groups that would be created.
                 for group in self.ad_groups:
@@ -186,22 +202,29 @@ class GladSync:
         """
         # get group members
         try:
-            ad_members_response = self.session.get(
-                self.config.ad_url + '/api/groups/' + ad_group['id'] + '/members')
+            base = ad_group['dn']
+            filter = "(objectclass=person)"
+            attributes = ["displayName", "objectclass", "dn", "mail"]
+            ad_members_response = self.connection.search(
+                search_base=base,
+                search_filter=filter,
+                search_scope=SUBTREE,
+                attributes=attributes
+            )
         except Exception as e:
             self.log.warning(
-                f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be fetched.")
+                f"AD group <{ad_group['displayName']}, {ad_group['dn']}> members could not be fetched.")
             self.log.debug(e)
             return
 
-        # load member data from json
+        # load member data
         try:
-            ad_members = json.loads(ad_members_response.text)['value']
+            ad_members = ad_members_response.entries
         except Exception as e:
             self.log.warning(
-                f"AD group <{ad_group['displayName']}, {ad_group['id']}> members could not be loaded from json.")
+                f"AD group <{ad_group['displayName']}, {ad_group['dn']}> members could not be loaded.")
             self.log.debug(e)
-            self.log.debug(f"\tJSON: {ad_members_response.text}")
+            self.log.debug(f"\tDN: {ad_members_response['dn']}")
 
         # remove gl_group_members that are not in ad_group
         ad_member_names = [m['displayName'].lower() for m in ad_members]

@@ -16,6 +16,8 @@ defaults = {
     'ad_url': '',
     'ad_user': '',
     'ad_pass': '',
+    'ldap_base': 'dc=ad,dc=iti,dc=lab',
+    'ldap_project_groups': 'OU=Project Groups,OU=Groups,DC=ad,DC=iti,DC=lab',
     'access_level': gitlab.const.AccessLevel.DEVELOPER,
 }
 
