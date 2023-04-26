@@ -56,7 +56,7 @@ def main(
     """
     config = Config(config_path, test, verbose, std_out)
     # all program logic is contained in the GladSync object
-    GladSync(config, test, delete, skip_ad)
+    GladSync(config, test, delete, skip_ad, verbose)
 
 
 if __name__ == "__main__":

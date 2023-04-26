@@ -19,6 +19,7 @@ gl_root: ''
 ad_url: ''
 
 # The username to use when accessing Active Directory
+# should be in the form of Domain\\User
 # REQUIRED
 ad_user: ''
 
