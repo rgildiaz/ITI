@@ -27,6 +27,14 @@ ad_user: ''
 # REQUIRED
 ad_pass: ''
 
+# The base dn to be used for LDAP searches.
+# Defaults to 'dc=ad,dc=iti,dc=lab'
+ldap_base: ''
+
+# The base dn to be used for LDAP project group searches.
+# Defaults to 'OU=Project Groups,OU=Groups,DC=ad,DC=iti,DC=lab'
+ldap_project_groups: ''
+
 # The access level to give to each person added to a GitLab group
 # Must be one of: [GUEST, REPORTER, DEVELOPER, MAINTAINER, OWNER]
 # Defaults to DEVELOPER

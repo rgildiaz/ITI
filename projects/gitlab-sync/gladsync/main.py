@@ -30,12 +30,13 @@ def main(
         "-v",
         help="Verbose. Print extra information while running."
     ),
-    delete: bool = typer.Option(
-        True,
-        "--no-delete",
-        "-d",
-        help="Delete GitLab groups and members as necessary. Otherwise, print expected changes but make no modifications."
-    ),
+    # Instead of ever deleting groups, those that are found in GitLab but not AD will just be logged instead.
+    # delete: bool = typer.Option(
+    #     False,
+    #     "--delete",
+    #     "-d",
+    #     help="Delete GitLab groups and members as necessary. Otherwise, print expected changes but make no modifications."
+    # ),
     skip_ad: bool = typer.Option(
         False,
         "--skip_ad",
@@ -56,7 +57,7 @@ def main(
     """
     config = Config(config_path, test, verbose, std_out)
     # all program logic is contained in the GladSync object
-    GladSync(config, test, delete, skip_ad, verbose)
+    GladSync(config, test, skip_ad)
 
 
 if __name__ == "__main__":
