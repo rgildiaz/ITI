@@ -17,7 +17,7 @@ It additionally contains some "helper" files:
 
 `main.py` initializes the [Typer](#typer) app and provides it an entry-point through the [`main()`](#main) function.
 
-### `main(config_path, test, verbose, delete)`
+### `main(config_path, test, verbose, std_out)`
 
 Define the app's command line options and create a [`Config`](#config) and [`GladSync`](#gladsync) object.
 
@@ -28,7 +28,7 @@ Args:
 - `config_path` (`str`) - the path to a .yaml config file to use. This is a **required** CLI option.
 - `test` (`bool`) - whether or not to use "test" mode. In test mode, log changes that would be made, but make no actual modifications. Default: `True`
 - `verbose` (`bool`) - whether or not to use verbose logging. Default: `False`
-- `delete` (`bool`) - whether or not to delete any remote resources. This is intended to prevent any accidental deletion of GitLab members or groups during the syncing process. Default: `True`
+- `std_out` (`bool`) - whether or not to print logs to std_out. Default: `True`
 
 Typer also (helpfully) auto-generates text for the `--help` CLI option, based on the `help=` arguments within the `typer.Option()` definitions, as well as the docstring within the body of `main()`.
 
@@ -36,7 +36,7 @@ The flow of the program can also be more easily seen in `main()`, as it first co
 
 ## [`gladsync.py`](./gladsync.py)
 
-`gladsync.py` contains the main functionality and program logic of the app. Using data given by the app's [configuration](#configpy), [`GladSync`](#gladsync) calls the [GitLab](#python-gitlab) and [Active Directory](../README.md#active-directory-api) APIs. It fetches available groups from the specified Active Directory instance, and then ([optionally](#mainconfig_path-test-verbose)) modifies the given GitLab instance to match.
+`gladsync.py` contains the main functionality and program logic of the app. Using data given by the app's [configuration](#configpy), [`GladSync`](#gladsync) calls the [GitLab](#python-gitlab) and [Active Directory](../README.md#ldap3) APIs. It fetches available groups from the specified Active Directory instance, and then ([optionally](#mainconfig_path-test-verbose)) modifies the given GitLab instance to match.
 
 ### `GladSync`
 
@@ -84,6 +84,12 @@ ad_user: ''
 # The password to use when accessing Active Directory.
 ad_pass: ''
 
+# The base distinguished name to be used for LDAP searches.
+ldap_base: 'OU=Project Groups,OU=Groups,DC=ad,DC=iti,DC=lab'
+
+# A semicolon (;) separated list distinguished names of the groups to sync.
+ldap_sync_groups: ''
+
 # The access level to give to each person added to a GitLab group
 # Must be one of: [GUEST, REPORTER, DEVELOPER, MAINTAINER, OWNER]
 access_level: 'DEVELOPER'
@@ -99,6 +105,10 @@ log_file: ''
 ### [`python-gitlab`](https://python-gitlab.readthedocs.io/en/stable/index.html)
 
 The `python-gitlab` package provides a Python wrapper for the GitLab API. It is used in [`gladsync.py`](./gladsync.py) to connect and modify a GitLab instance.
+
+### [`ldap3`](https://ldap3.readthedocs.io/en/latest/index.html)
+
+The `ldap3` package provides LDAP functionality for Python. It is used in [`gladsync.py`](./gladsync.py) to read data from the Active Directory instance.
 
 ### [Typer](https://typer.tiangolo.com/)
 
