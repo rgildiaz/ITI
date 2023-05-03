@@ -37,6 +37,12 @@ def main(
     #     "-d",
     #     help="Delete GitLab groups and members as necessary. Otherwise, print expected changes but make no modifications."
     # ),
+    create_groups: bool = typer.Option(
+        False,
+        "--create_groups",
+        "-c",
+        help="Create GitLab groups that are found in AD but not GitLab."
+    ),
     skip_ad: bool = typer.Option(
         False,
         "--skip_ad",
@@ -57,7 +63,7 @@ def main(
     """
     config = Config(config_path, test, verbose, std_out)
     # all program logic is contained in the GladSync object
-    GladSync(config, test, skip_ad)
+    GladSync(config, test, create_groups, skip_ad)
 
 
 if __name__ == "__main__":

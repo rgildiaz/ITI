@@ -18,8 +18,7 @@ gl_root: ''
 # REQUIRED
 ad_url: ''
 
-# The username to use when accessing Active Directory
-# should be in the form of Domain\\User
+# The distinguished name to use when accessing Active Directory
 # REQUIRED
 ad_user: ''
 
@@ -28,12 +27,12 @@ ad_user: ''
 ad_pass: ''
 
 # The base dn to be used for LDAP searches.
-# Defaults to 'dc=ad,dc=iti,dc=lab'
+# Defaults to 'OU=Project Groups,OU=Groups,DC=ad,DC=iti,DC=lab'
 ldap_base: ''
 
-# The base dn to be used for LDAP project group searches.
-# Defaults to 'OU=Project Groups,OU=Groups,DC=ad,DC=iti,DC=lab'
-ldap_project_groups: ''
+# a semicolon (;) separated list dn's of the groups to sync.
+# Defaults to all groups within base.
+ldap_sync_groups: ''
 
 # The access level to give to each person added to a GitLab group
 # Must be one of: [GUEST, REPORTER, DEVELOPER, MAINTAINER, OWNER]

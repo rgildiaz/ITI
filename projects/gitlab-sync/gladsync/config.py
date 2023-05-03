@@ -16,8 +16,8 @@ defaults = {
     'ad_url': '',
     'ad_user': '',
     'ad_pass': '',
-    'ldap_base': 'dc=ad,dc=iti,dc=lab',
-    'ldap_project_groups': 'OU=Project Groups,OU=Groups,DC=ad,DC=iti,DC=lab',
+    'ldap_base': 'OU=Project Groups,OU=Groups,DC=ad,DC=iti,DC=lab',
+    'ldap_sync_groups': '',
     'access_level': gitlab.const.AccessLevel.DEVELOPER,
 }
 
@@ -30,9 +30,9 @@ class Config:
 
         Args:
             config_path (Path) : the path to the .yaml config file to use.
-            test (bool) : test mode switch (`True` will make no remote changes).
-            verbose (bool) : verbose switch (`True` will print extra information).
-            std_out (bool) : standard out print switch (`True` will print to stdout).
+            test        (bool) : test mode switch (`True` will make no remote changes).
+            verbose     (bool) : verbose switch (`True` will print extra information).
+            std_out     (bool) : standard out print switch (`True` will print to stdout).
         """
         # setup logging and stdout handler
         # another file handler is set up in self.parse() if a log_file is specified
@@ -71,6 +71,10 @@ class Config:
                     # set as default if empty value is provided
                     setattr(self, key, defaults[key])
             except KeyError:
+                # keys that aren't required can be set to None
+                if key in ['ldap_sync_groups']:
+                    setattr(self, key, None)
+                    continue
                 # since GL info doesn't matter in test mode, skip GL info if not found
                 # TODO REMOVE AD KEYS FROM LIST
                 if test and (key in ['gl_url', 'gl_pat', 'gl_root', 'ad_url', 'ad_user', 'ad_pass']):
@@ -174,7 +178,8 @@ class Config:
         try:
             config = yaml.safe_load(conf)
         except Exception as e:
-            self.log.error(f'Could not load YAML from config file {config_file}')
+            self.log.error(
+                f'Could not load YAML from config file {config_file}')
             sys.exit()
 
         self.configure_log(config)
@@ -184,6 +189,12 @@ class Config:
             config['access_level'] = ""
 
         config['access_level'] = self.set_access(config['access_level'])
+
+        # set ldap_sync_groups to a list of groups if it is a string
+        if not config['ldap_sync_groups']:
+            config['ldap_sync_groups'] = ""
+        
+        config['ldap_sync_groups'] = self.set_ldap_sync_groups(config['ldap_sync_groups'])
 
         self.log.debug(f'Config file {config_file} parsed')
 
@@ -223,6 +234,31 @@ class Config:
                 out = defaults['access_level']
         else:
             out = defaults['access_level']
+
+        return out
+    
+    def set_ldap_sync_groups(self, ldap_sync_groups: str) -> list:
+        """
+        Set ldap_sync_groups to a list of groups given each group dn.
+        DN's should be separated by a semicolon.
+
+        Args:
+            ldap_sync_groups (str) : a string of group dn's.
+        Returns:
+            list : a list of groups.
+        """
+        if ldap_sync_groups:
+            try:
+                out = ldap_sync_groups.split(';')
+            except Exception as e:
+                self.log.info(
+                    f"Given ldap_sync_groups <{ldap_sync_groups}> not valid. Reverting to default: {defaults['ldap_sync_groups']}")
+                out = defaults['ldap_sync_groups']
+        else:
+            out = defaults['ldap_sync_groups']
+
+        # remove empty strings from list
+        out = list(filter(None, out))
 
         return out
 

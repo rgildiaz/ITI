@@ -7,14 +7,15 @@ from ldap3 import (ALL, NTLM, SUBTREE, Connection, Server)
 
 
 class GladSync:
-    def __init__(self, config: Config, test: bool, skip_ad: bool):
+    def __init__(self, config: Config, test: bool, create_groups: bool, skip_ad: bool):
         """
         The GitLab Active Directory Sync utility.
         Contains all program logic, called by main() in ./main.py.
 
         Args:
-            config  (Config) : a config.Config object containing parsed config data.
-            test    (bool)   : Enable/disable test/print-only mode.
+            config      (Config) : a config.Config object containing parsed config data.
+            test          (bool) : Enable/disable test/print-only mode.
+            create_groups (bool) : Enable/disable creating GitLab groups that are found in AD but not GitLab.
         """
         # root logger should already be setup from config.
         self.log = logging.getLogger()
@@ -72,41 +73,65 @@ class GladSync:
                 self.log.debug(e)
                 sys.exit()
 
-        if not skip_ad:
-            # Create LDAP session and fetch groups
-            try:
-                s = Server(config.ad_url, get_info=ALL)
-                # TODO not sure if I fully understand authentication
-                c = Connection(s, user=config.ad_user, password=config.ad_pass,
-                               auto_bind=True, authentication=NTLM)
-                self.log.debug(f"LDAP Session started: {c}")
-            except Exception as e:
-                self.log.error(f"AD Session could not be started.")
-                self.log.debug(e)
-                sys.exit()
+        # Create LDAP session and fetch groups
+        try:
+            s = Server(config.ad_url, get_info=ALL)
+            c = Connection(s, user=config.ad_user,
+                           password=config.ad_pass, auto_bind=True)
+            self.log.debug(f"LDAP Session started: {c}")
+        except Exception as e:
+            self.log.error(f"AD Session could not be started. Given: \n\tad_url: {config.ad_url}\n\tad_user: {config.ad_user}\n\tad_pass: {config.ad_pass}")
+            self.log.debug(e)
+            sys.exit()
 
+        # fetch config.ldap_sync_groups if provided.
+        # still only searches for groups in config.ldap_base
+        ad_groups = []
+        if config.ldap_sync_groups:
+            for group in config.ldap_sync_groups:
+                try:
+                    base = config.ldap_base
+                    filter = f"(&(objectCategory=Group) (distinguishedname={group}))"
+                    attributes = ["displayname", "distinguishedname", "samaccountname"]
+                    c.search(
+                        search_base=base,
+                        search_filter=filter,
+                        search_scope=SUBTREE,
+                        attributes=attributes
+                    )
+                    ad_groups.extend(c.entries)
+                except Exception as e:
+                    self.log.warn(
+                        f"AD group {group} could not be fetched. Searched in config.ldap_base: {config.ldap_base}.")
+                    self.log.debug(e)
+        else:
+            # Otherwise, fetch all groups in config.ldap_base
             try:
-                base = config.ldap_project_groups
-                filter = "(objectclass=group)"
-                attributes = ["displayName", "dn"]
-                ad_groups = c.search(
+                base = config.ldap_base
+                filter = "(objectCategory=Group)"
+                attributes = ["displayname", "distinguishedname", "samaccountname"]
+                c.search(
                     search_base=base,
                     search_filter=filter,
                     search_scope=SUBTREE,
                     attributes=attributes
                 )
+                ad_groups = c.entries
                 if ad_groups:
                     self.log.debug(
-                        f"AD groups fetched: {len(ad_groups.entries)}")
+                        f"AD groups fetched: {len(ad_groups)}")
                     self.log.debug(
-                        f"All AD groups: {[g for g in ad_groups.entries]}")
+                        f"All AD groups: {[g for g in ad_groups]}")
+                else:
+                    self.log.warning(
+                        f"AD groups could not be fetched. No groups found. Searched in config.ldap_base: {config.ldap_base}.")
             except Exception as e:
                 self.log.error(f"AD groups could not be fetched.")
                 self.log.debug(e)
                 sys.exit()
 
-            self.connection = c
-            self.ad_groups = ad_groups.entries
+        self.connection = c
+        self.ad_groups = ad_groups
 
         # gl, gl_groups, parent_group will be None if in test AND gl auth not provided in config/not working.
         self.gl = gl
@@ -114,13 +139,13 @@ class GladSync:
         self.parent_group = parent_group
 
         self.test = test
+        self.create_groups = create_groups
 
-        if skip_ad:
-            self.test_print()
-        else:
-            # start the main program loop
-            self.sync_groups()
+        # start the main program loop
+        self.sync_groups()
 
+        # close the LDAP connection before finishing
+        self.connection.unbind()
         self.log.info('Gladsync complete!')
 
     def sync_groups(self):
@@ -129,8 +154,8 @@ class GladSync:
         """
         # check that all ad_groups are in gl
         for ad_group in self.ad_groups:
-            # compare to gl groups
-            ad_group_name = ad_group['displayName'].lower()
+            # compare samaccountname to gl group names
+            ad_group_name = ad_group['samaccountname'].lower()
 
             # search for a match
             # skip finding a match if GitLab was never accessed
@@ -160,7 +185,7 @@ class GladSync:
                 sys.exit()
 
         # Now, groups that are found in GitLab but not AD should be logged.
-        ad_group_names = [g['displayName'].lower() for g in self.ad_groups]
+        ad_group_names = [g['samaccountname'].lower() for g in self.ad_groups]
         if self.gl:
             for gl_group in self.gl_groups:
                 if gl_group.name.lower() not in ad_group_names:
@@ -188,53 +213,47 @@ class GladSync:
             gl_group : a gitlab.Gitlab.Group object.
         """
         # get group members
+        prj_dn = ad_group['distinguishedname']
         try:
-            base = ad_group['dn']
-            filter = "(objectclass=person)"
-            attributes = ["displayName", "dn", "mail", "SAMAccountName"]
-            ad_members_response = self.connection.search(
+            base = self.config.ldap_base
+            # adapted from testbed/ad-account-management/aam/aam/adutils.py, not sure how the memberof filter works.
+            filter = f"(&(objectCategory=Person) (memberof:1.2.840.113556.1.4.1941:={prj_dn}))"
+            attributes = ['distinguishedname','displayname','samaccountname','mail']
+            self.connection.search(
                 search_base=base,
                 search_filter=filter,
                 search_scope=SUBTREE,
                 attributes=attributes
             )
+            ad_members = self.connection.entries
         except Exception as e:
             self.log.warning(
-                f"AD group <{ad_group['displayName']}, {ad_group['dn']}> members could not be fetched.")
+                f"AD group <{ad_group['displayname']}, {ad_group['distinguishedname']}> members could not be fetched.")
             self.log.debug(e)
             return
 
-        # load member data
-        try:
-            ad_members = ad_members_response.entries
-        except Exception as e:
-            self.log.warning(
-                f"AD group <{ad_group['displayName']}, {ad_group['dn']}> members could not be loaded.")
-            self.log.debug(e)
-            self.log.debug(f"\tDN: {ad_members_response['dn']}")
-
         # remove gl_group_members that are not in ad_group
-        ad_member_names = [m['displayName'].lower() for m in ad_members]
+        ad_member_mails = [m['mail'].strip() for m in ad_members]
         gl_group_members = gl_group.members.list()
         for gl_member in gl_group_members:
-            # check display names against each other (not username)
-            if gl_member.name.lower() not in ad_member_names:
+            # check emails against each other
+            if gl_member.email.strip() not in ad_member_mails:
                 # gl_group_members is the local list
                 gl_group_members.remove(gl_member)
                 self.log.info(
                     f"GitLab group <{gl_group.name}, {gl_group.id}> member <{gl_member.name}, {gl_member.id}> found in GitLab but not AD. Consider removing.")
 
         # add members that are in the ad_group but not gitlab
-        gl_member_names = [m.name.lower() for m in gl_group_members]
+        gl_member_mails = [m.email.strip() for m in gl_group_members]
         gl_all_members = self.parent_group.members_all.list(get_all=True)
         for ad_member in ad_members:
             # for each member, check if they are in the gl group already
-            ad_name = ad_member['displayName'].lower()
-            if ad_name not in gl_member_names:
+            ad_mail = ad_member['mail'].strip()
+            if ad_mail not in gl_member_mails:
                 # add user to group if they already have an account that exists in one of the subgroups
                 match_found = False
                 for gl_mem in gl_all_members:
-                    if ad_name == gl_mem.name.lower():
+                    if ad_mail == gl_mem.email.strip():
                         # if a match is found, add the member to the gitlab group
                         create_member = {
                             'user_id': gl_mem.user_id,
@@ -257,7 +276,7 @@ class GladSync:
                 if not match_found:
                     if self.test:
                         self.log.info(
-                            f"(test) Invite email would be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>.")
+                            f"(test) Invite email would be sent for member <{ad_member['displayname']}, {ad_member['distinguishedname']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>.")
                     else:
                         try:
                             gl_group.invitations.update(
@@ -266,7 +285,7 @@ class GladSync:
                             )
                         except Exception as e:
                             self.log.warning(
-                                f"Invite email could not be sent for member <{ad_member['displayName']}, {ad_member['id']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>.")
+                                f"Invite email could not be sent for member <{ad_member['displayname']}, {ad_member['distinguishedname']}, {ad_member['mail']}> to group <{gl_group.name}, {gl_group.id}>.")
                             self.log.debug(e)
 
     def create_group(self, ad_group):
@@ -278,13 +297,17 @@ class GladSync:
         parent_group = self.parent_group.id if self.parent_group else "<No gl_root Group>"
 
         gl_group = {
-            'name': ad_group['displayName'],
-            'path': ad_group['displayName'],
+            'name': ad_group['displayname'],
+            'path': ad_group['displayname'],
             'parent_group': parent_group
         }
 
         if self.test:
-            self.log.info(f"(test) Would create group: {gl_group}")
+            self.log.info(
+                f"(test) Would create group: {gl_group}. Disable --test to create.")
+        elif not self.create_groups:
+            self.log.info(
+                f"(create_groups) Would create group: {gl_group}. Use --create_groups to create.")
         else:
             try:
                 gl_group = self.gl.groups.create(gl_group)
