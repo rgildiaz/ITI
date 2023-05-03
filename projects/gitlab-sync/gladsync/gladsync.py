@@ -3,11 +3,11 @@ import sys
 
 import gitlab
 from config import Config
-from ldap3 import (ALL, NTLM, SUBTREE, Connection, Server)
+from ldap3 import (ALL, SUBTREE, Connection, Server)
 
 
 class GladSync:
-    def __init__(self, config: Config, test: bool, create_groups: bool, skip_ad: bool):
+    def __init__(self, config: Config, test: bool, create_groups: bool):
         """
         The GitLab Active Directory Sync utility.
         Contains all program logic, called by main() in ./main.py.
@@ -319,16 +319,3 @@ class GladSync:
 
         # use sync_members to add correct group members
         self.sync_members(ad_group, gl_group)
-
-    def test_print(self):
-        """
-        TODO REMOVE THIS, only called when skip_ad is true
-        check gitlab for all groups and members. Print all.
-        """
-        groups = self.gl_groups
-        gr = []
-        for g in groups:
-            gr.append(f"<Group {g.id} '{g.name}', parent: {g.parent_id}>")
-        members = self.parent_group.members_all.list(get_all=True)
-        self.log.info(
-            f"\nParent: {self.parent_group}\n\nGroups: {gr}\n\nMembers: {members}")
