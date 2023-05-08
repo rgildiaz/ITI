@@ -11,4 +11,4 @@ Each of the directories in the `projects` folder are self-contained. The project
 - [Verify Installations Remotely with Ansible](./projects/ansible) - _October 2022_
 - [Gravwell for Data Storage and Analysis](./projects/gravwell) - _December 2022_
 - [The Grafana Observability Stack](./projects/grafana) - _January 2022_
-- [Sync GitLab Groups with Active Directory](./projects/gitlab-sync) - _February/March 2022_
+- [Sync GitLab Groups with Active Directory](./projects/gitlab-sync) - _February-April 2022_

@@ -1,4 +1,4 @@
-<figure style="
+<!-- <figure style="
   height: auto; 
   width: auto;
   display: flex;
@@ -12,7 +12,7 @@
       width: 100%;
   " />
   <figcaption align="center"><em>call me a master of cable management :^)</em></figcaption>
-</figure>
+</figure> -->
 
 # Testing 10G SFP+ Bidirectional Transceivers
 
